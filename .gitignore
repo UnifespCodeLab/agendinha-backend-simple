@@ -1,0 +1,7 @@
+env/
+__pycache__/
+__pycache__/*
+*.pyc
+*.pyc
+*settings.cpython-312.pyc
+/home/inovacao4/www/graacc-backend-simple/graac_backend/core/__pycache__/*
