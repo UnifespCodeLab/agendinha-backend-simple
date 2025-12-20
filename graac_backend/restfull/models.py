@@ -72,6 +72,7 @@ class Paciente(models.Model):
     """
     id_paciente = models.BigAutoField(primary_key=True)
     nome = models.CharField(max_length=255, unique=True)
+    telefone = models.CharField(max_length=20, null=True, blank=True)
 
     class Meta:
         db_table = 'paciente'
@@ -92,6 +93,7 @@ class Agendamento(models.Model):
     descricao = models.CharField(max_length=255)
     data = models.DateTimeField()
     local = models.CharField(max_length=100)
+    medico = models.CharField(max_length=255, null=True, blank=True)
     paciente = models.ForeignKey(
         Paciente,
         on_delete=models.SET_NULL,
@@ -100,6 +102,7 @@ class Agendamento(models.Model):
         db_column='id_paciente',
         related_name='agendamentos'
     )
+    lembrete_enviado = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'agendamento'
@@ -128,6 +131,7 @@ class Notificacao(models.Model):
     id_agendamento = models.BigIntegerField()
     data = models.DateTimeField()
     lida = models.BooleanField(default=False)
+    mensagem = models.TextField(null=True, blank=True)
 
     class Meta:
         db_table = 'notificacao'

@@ -106,7 +106,7 @@ class PatientSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Paciente
-        fields = ['id_paciente', 'nome']
+        fields = ['id_paciente', 'nome', 'telefone']
         read_only_fields = ['id_paciente']
 
 
@@ -123,6 +123,7 @@ class AppointmentRequestSerializer(serializers.Serializer):
     descricao = serializers.CharField(max_length=255)
     data = serializers.CharField()  # Formato: "dd/MM/yyyy HH:mm"
     local = serializers.CharField(max_length=100)
+    medico = serializers.CharField(max_length=255, required=False, allow_blank=True)
     nome_completo_paciente = serializers.CharField(max_length=255)
 
     def validate_data(self, value):
@@ -149,8 +150,8 @@ class AppointmentSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Agendamento
-        fields = ['id_agendamento', 'titulo', 'descricao', 'data', 'local', 'id_paciente']
-        read_only_fields = ['id_agendamento', 'id_paciente']
+        fields = ['id_agendamento', 'titulo', 'descricao', 'data', 'local', 'medico', 'id_paciente', 'lembrete_enviado']
+        read_only_fields = ['id_agendamento', 'id_paciente', 'lembrete_enviado']
 
     def get_data(self, obj):
         """Formata data no formato dd/MM/yyyy HH:mm"""
