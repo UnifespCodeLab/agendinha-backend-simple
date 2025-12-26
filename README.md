@@ -81,7 +81,7 @@ python manage.py runserver
 
 A API estará disponível em: **http://localhost:8000**
 
-Documentação Swagger: **http://localhost:8000/api/schema/swagger-ui/**
+Documentação Swagger: **http://localhost:8000/api/docs/**
 
 ---
 
