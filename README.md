@@ -43,7 +43,7 @@ API Django RESTful completa para o sistema GRAACC Agendinha, migrada de 4 micros
 ```bash
 # 1. Clone o repositório
 git clone https://github.com/UnifespCodeLab/graacc-backend-simple.git
-cd graacc-backend-simple/graac_backend
+cd graacc-backend-simple/graacc_backend
 
 # 2. Crie e ative o ambiente virtual
 python -m venv env
