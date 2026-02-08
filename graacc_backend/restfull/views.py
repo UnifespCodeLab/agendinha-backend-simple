@@ -4,10 +4,11 @@ Migradas dos Controllers dos microserviços Java Spring Boot
 """
 
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.parsers import MultiPartParser, FormParser
 from django.utils import timezone
 from django.db import transaction
 from datetime import datetime, timedelta
@@ -322,6 +323,23 @@ def user_update(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+@api_view(['PUT'])
+@permission_classes([IsAdminOrUser])
+@parser_classes([MultiPartParser, FormParser])
+def user_avatar_update(request):
+    user_id = request.data['id']
+    profile_image = request.data['foto_perfil']
+    
+    try:
+        user = Usuario.objects.get(id_usuario=user_id)
+        user.foto_perfil = profile_image
+        user.save()
+        return Response(status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"message": "Não foi possível atualizar o Usuário."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 @extend_schema(
     tags=['Autenticação - Usuários'],

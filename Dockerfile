@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Define o diretório de trabalho para onde está o manage.py
-WORKDIR /app/graac_backend
+WORKDIR /app/graacc_backend
 
 # Script para configurar o cron dinamicamente baseado no .env
 RUN echo '#!/bin/bash\n\

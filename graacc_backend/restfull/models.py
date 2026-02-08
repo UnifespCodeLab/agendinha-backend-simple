@@ -33,6 +33,7 @@ class Usuario(models.Model):
         default=Role.USER
     )
     id_paciente = models.BigIntegerField(null=True, blank=True)
+    foto_perfil = models.ImageField(upload_to='images/', null=True, blank=True)
 
     class Meta:
         db_table = 'usuario'

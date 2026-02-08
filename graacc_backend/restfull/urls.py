@@ -5,6 +5,8 @@ Compatível com estrutura dos microserviços Java
 
 from django.urls import path
 from . import views
+from django.conf import settings
+from django.conf.urls.static import static
 
 urlpatterns = [
     # ========================================================================
@@ -19,6 +21,7 @@ urlpatterns = [
     path('usuarios/pacienteid/registrar', views.user_register_with_patient_id, name='user-register-patient-id'),
     path('usuarios/login', views.user_login, name='user-login'),
     path('usuarios/confirmar', views.user_confirm, name='user-confirm'),
+    path('usuarios/foto', views.user_avatar_update, name='user-avatar-update'),
     path('usuarios', views.user_get, name='user-get'),  # GET
     # Nota: PUT e DELETE para /usuarios serão tratados na mesma view com método HTTP
     
@@ -77,3 +80,9 @@ urlpatterns += [
     # Notificação: DELETE
     path('notificacoes/<int:id_agendamento>/delete', views.notification_delete_by_appointment, name='notification-delete'),  # DELETE
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        document_root=settings.MEDIA_ROOT
+    )
