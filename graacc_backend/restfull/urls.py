@@ -22,6 +22,7 @@ urlpatterns = [
     path('usuarios/login', views.user_login, name='user-login'),
     path('usuarios/confirmar', views.user_confirm, name='user-confirm'),
     path('usuarios/foto', views.user_avatar_update, name='user-avatar-update'),
+    path('usuarios/redefinir-senha', views.user_password_update, name='user-password-update'),
     path('usuarios', views.user_get, name='user-get'),  # GET
     # Nota: PUT e DELETE para /usuarios serão tratados na mesma view com método HTTP
     

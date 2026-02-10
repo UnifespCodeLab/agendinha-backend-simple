@@ -24,7 +24,8 @@ from .serializers import (
     AdminRegisterSerializer, UserSerializer,
     PatientSerializer, PatientRequestSerializer,
     AppointmentRequestSerializer, AppointmentSerializer,
-    AppointmentInfoSerializer, NotificationSerializer
+    AppointmentInfoSerializer, NotificationSerializer,
+    UserUpdatePasswordSerializer
 )
 from .permissions import IsAdmin, IsUser, IsAdminOrUser
 
@@ -341,6 +342,30 @@ def user_avatar_update(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+@api_view(['PUT'])
+@permission_classes([IsAdminOrUser])
+def user_password_update(request):
+    serializer = UserUpdatePasswordSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    id = request.data['id']
+    try:
+        user = Usuario.objects.get(id_usuario=id)
+        if not user.check_password(serializer.validated_data['senha_atual']):
+            return Response(
+                {"message": "Senha atual incompatível."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )       
+        user.set_password(serializer.validated_data['senha_nova'])
+        user.save()
+        return Response(status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"message": "Não foi possível atualizar a senha do usuário."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
 @extend_schema(
     tags=['Autenticação - Usuários'],
     summary='Deletar usuário',
