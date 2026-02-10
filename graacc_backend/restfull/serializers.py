@@ -61,6 +61,10 @@ class UserUpdateSerializer(serializers.Serializer):
     email = serializers.EmailField(required=False, allow_blank=True)
     nome_completo_paciente = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
+class UserUpdatePasswordSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    senha_atual = serializers.CharField(write_only=True, style={'input_type': 'password'})
+    senha_nova = serializers.CharField(write_only=True, style={'input_type': 'password'})
 
 class AdminRegisterSerializer(serializers.Serializer):
     """
