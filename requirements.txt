@@ -31,3 +31,4 @@ pillow==12.1.0
 # Google OAuth2
 django-allauth==65.14.3
 cryptography==46.0.5
+google-auth==2.48.0
