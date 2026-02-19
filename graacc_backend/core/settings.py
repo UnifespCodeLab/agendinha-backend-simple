@@ -42,6 +42,11 @@ INSTALLED_APPS = [
     'drf_spectacular',
     # Local apps (migrados dos microserviços)
     'restfull',  # App criado anteriormente
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
 ]
 
 MIDDLEWARE = [
@@ -53,7 +58,28 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend', # standard django backend
+    'allauth.account.auth_backends.AuthenticationBackend', # all auth backend
+]
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'OAUTH_PKCE_ENABLED': True,
+    }
+}
+
+GOOGLE_CLIENT_ID = '394913855591-u2eqg2n427qtt71nv11j23kes2rfb039.apps.googleusercontent.com'
 
 ROOT_URLCONF = 'core.urls'
 

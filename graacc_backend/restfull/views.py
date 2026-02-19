@@ -2,7 +2,8 @@
 Views para GRAACC API Unificada
 Migradas dos Controllers dos microserviços Java Spring Boot
 """
-
+from google.oauth2 import id_token
+from google.auth.transport import requests
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.response import Response
@@ -220,6 +221,54 @@ def user_login(request):
     }
     
     return Response(response_data, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def user_login_google(request):
+    serializer = UserLoginSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    data = serializer.validated_data
+
+    try:
+        id = id_token.verify_oauth2_token(
+            data.token,
+            requests.Request(),
+            settings.GOOGLE_CLIENT_ID
+        )
+
+        email = id["email"]
+        first_name = id.get("given_name", "")
+        last_name = id.get("family_name", "")
+
+        user, created = Usuario.objects.get_or_create(email=email)
+
+        if created:
+            user.set_unusable_password()
+            user.nome = f"{first_name} {last_name}"
+            user.modo_google = True
+            user.save()
+        else:
+            if not user.modo_google:
+                return Response({
+                    "error": "Usuário precisa logar via e-mail.",
+                    "status": False
+                }, status=status.HTTP_403_FORBIDDEN) 
+
+        refresh = RefreshToken.for_user(user)
+
+        return Response({
+            "tokens": {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh),
+            },
+            "status": True
+        }, status=status.HTTP_200_OK)
+
+    except ValueError:
+        return Response(status=status.HTTP_400_BAD_REQUEST)    
+
 
 
 @extend_schema(
