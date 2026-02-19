@@ -25,7 +25,7 @@ class Usuario(models.Model):
     id_usuario = models.BigAutoField(primary_key=True)
     nome = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
-    senha = models.CharField(max_length=255, null=True)
+    senha = models.CharField(max_length=255, blank=True)
     cadastro_confirmado = models.BooleanField(default=False)
     role = models.CharField(
         max_length=50,
