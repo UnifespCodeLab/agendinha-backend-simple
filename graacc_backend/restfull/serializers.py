@@ -42,6 +42,9 @@ class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     senha = serializers.CharField(write_only=True, style={'input_type': 'password'})
 
+class UserGoogleLoginSerializer(serializers.Serializer):
+    token = serializers.CharField(write_only=True)
+    email = serializers.EmailField()
 
 class UserLoginResponseSerializer(serializers.Serializer):
     """

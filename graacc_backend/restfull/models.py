@@ -25,7 +25,7 @@ class Usuario(models.Model):
     id_usuario = models.BigAutoField(primary_key=True)
     nome = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
-    senha = models.CharField(max_length=255)
+    senha = models.CharField(max_length=255, null=True)
     cadastro_confirmado = models.BooleanField(default=False)
     role = models.CharField(
         max_length=50,
@@ -34,6 +34,7 @@ class Usuario(models.Model):
     )
     id_paciente = models.BigIntegerField(null=True, blank=True)
     foto_perfil = models.ImageField(upload_to='images/', null=True, blank=True)
+    modo_google = models.BooleanField(default=False, null=False)
 
     class Meta:
         db_table = 'usuario'

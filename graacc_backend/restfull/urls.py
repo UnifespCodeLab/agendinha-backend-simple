@@ -3,7 +3,7 @@ URLs para GRAACC API Unificada
 Compatível com estrutura dos microserviços Java
 """
 
-from django.urls import path
+from django.urls import path, include
 from . import views
 from django.conf import settings
 from django.conf.urls.static import static
@@ -20,6 +20,7 @@ urlpatterns = [
     path('usuarios/registrar', views.user_register, name='user-register'),
     path('usuarios/pacienteid/registrar', views.user_register_with_patient_id, name='user-register-patient-id'),
     path('usuarios/login', views.user_login, name='user-login'),
+    path('usuarios/login/google', views.user_login_google, name='user-login-google'),
     path('usuarios/confirmar', views.user_confirm, name='user-confirm'),
     path('usuarios/foto', views.user_avatar_update, name='user-avatar-update'),
     path('usuarios/redefinir-senha', views.user_password_update, name='user-password-update'),
