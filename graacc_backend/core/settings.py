@@ -79,7 +79,7 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-GOOGLE_CLIENT_ID = '394913855591-u2eqg2n427qtt71nv11j23kes2rfb039.apps.googleusercontent.com'
+GOOGLE_CLIENT_ID = '394913855591-9i1eajc04hrrdtikv6n7bsjbe0l809gp.apps.googleusercontent.com'
 
 ROOT_URLCONF = 'core.urls'
 
