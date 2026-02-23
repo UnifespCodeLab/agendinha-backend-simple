@@ -212,6 +212,9 @@ def user_login(request):
     if not user.check_password(serializer.validated_data['senha']):
         return Response(status=status.HTTP_400_BAD_REQUEST)
     
+    if user.modo_google:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
     # Gera token JWT customizado
     token = generate_custom_jwt(user)
     
@@ -252,14 +255,15 @@ def user_login_google(request):
             if not user.modo_google:
                 return Response({
                     "error": "Usuário precisa logar via e-mail.",
-                }, status=status.HTTP_403_FORBIDDEN) 
-
+                }, status=status.HTTP_403_FORBIDDEN)
+        
         # Gera token JWT customizado
         token = generate_custom_jwt(user)
         
         response_data = {
             'nome': user.nome,
-            'token': token
+            'token': token,
+            'cadastro_confirmado': user.cadastro_confirmado
         }
         
         return Response(response_data, status=status.HTTP_200_OK)
