@@ -263,7 +263,8 @@ def user_login_google(request):
         response_data = {
             'nome': user.nome,
             'token': token,
-            'cadastro_confirmado': user.cadastro_confirmado
+            'cadastro_confirmado': user.cadastro_confirmado,
+            'email': email
         }
         
         return Response(response_data, status=status.HTTP_200_OK)
@@ -289,7 +290,7 @@ def user_confirm(request):
     Migrado de: UserController.confirmUser()
     """
     user_info = request.user
-    user = Usuario.objects.get(id_usuario=user_info.id_usuario)
+    user = Usuario.objects.get(email=user_info.email)
     user.cadastro_confirmado = True
     user.save()
     
