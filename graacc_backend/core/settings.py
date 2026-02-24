@@ -28,6 +28,8 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # OAuth2
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'gp.apps.googleusercontent.com')
+FRONTEND_URL = "http://localhost:3000"
+SECRET_KEY = "graacc"
 
 # SMTP Server
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
