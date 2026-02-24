@@ -5,7 +5,11 @@ Migrados dos microserviços Java Spring Boot
 
 from django.db import models
 import bcrypt
-
+import time
+from django.utils.crypto import constant_time_compare
+import hmac
+import hashlib
+from django.conf import settings
 
 # ============================================================================
 # USUÁRIOS (migrado do MS Usuários)
@@ -35,6 +39,45 @@ class Usuario(models.Model):
     id_paciente = models.BigIntegerField(null=True, blank=True)
     foto_perfil = models.ImageField(upload_to='images/', null=True, blank=True)
     modo_google = models.BooleanField(default=False, null=False)
+
+    def make_token(self) -> str:
+        timestamp = int(time.time())
+        hash_value = self._make_hash(timestamp)
+        return f"{timestamp}-{hash_value}"
+
+    def check_token(self, token: str) -> bool:
+        try:
+            timestamp_str, hash_value = token.split("-")
+            timestamp = int(timestamp_str)
+        except ValueError:
+            return False
+
+        # Check expiration
+        if (time.time() - timestamp) > self.timeout_seconds:
+            return False
+
+        expected_hash = self._make_hash(timestamp)
+
+        return constant_time_compare(expected_hash, hash_value)
+
+    def _make_hash(self, timestamp: int) -> str:
+        """
+        Build secure hash based on user state.
+        If any of these fields change → token invalid.
+        """
+        value = (
+            str(self.id_usuario) +
+            str(self.senha) +
+            str(self.cadastro_confirmado) +
+            str(self.role) +
+            str(timestamp)
+        )
+
+        return hmac.new(
+            key=settings.SECRET_KEY.encode(),
+            msg=value.encode(),
+            digestmod=hashlib.sha256
+        ).hexdigest()
 
     class Meta:
         db_table = 'usuario'

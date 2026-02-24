@@ -17,7 +17,8 @@ import jwt
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
-
+from django.utils.encoding import force_str
+from django.utils.http import urlsafe_base64_decode
 from .models import Usuario, Paciente, Agendamento, Notificacao, Role
 from .serializers import (
     UserRegisterSerializer, UserRegisterWithPatientIdSerializer,
@@ -32,6 +33,7 @@ from .serializers import (
 from .permissions import IsAdmin, IsUser, IsAdminOrUser
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
 
 # ============================================================================
 # UTILIDADES JWT
@@ -177,7 +179,7 @@ def user_register_with_patient_id(request):
         )
         user.set_password(serializer.validated_data['senha'])
         user.save()
-        
+        user_register_email_confirm(user)
         return Response(status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -185,7 +187,16 @@ def user_register_with_patient_id(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-
+def user_register_email_confirm(user: Usuario):
+    token = user.make_token()
+    reset_link = f"{settings.FRONTEND_URL}/conta/{user.id_usuario}/{token}"
+    subject = 'Confirmação de cadastro - Agendinha do GRAACC'
+    text_content = 'E-mail para confirmação de cadastro'
+    html_message = render_to_string('confirm_account_email.html', {'nome': user.nome, 'reset_link': reset_link })
+    msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [user.email])
+    msg.attach_alternative(html_message, "text/html")
+    msg.send()
+    
 @extend_schema(
     tags=['Autenticação - Usuários'],
     summary='Login de usuário',
@@ -308,15 +319,15 @@ def user_request_password_update(request):
     responses={200: None},
 )
 @api_view(['POST'])
-@permission_classes([IsAdminOrUser])
+@permission_classes([AllowAny])
 def user_confirm(request):
     """
     POST /usuarios/confirmar
     Confirma cadastro do usuário autenticado
     Migrado de: UserController.confirmUser()
     """
-    user_info = request.user
-    user = Usuario.objects.get(email=user_info.email)
+    user_info = request.data
+    user = Usuario.objects.get(pk=user_info['id_usuario'])
     user.cadastro_confirmado = True
     user.save()
     
