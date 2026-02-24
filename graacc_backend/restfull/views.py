@@ -26,10 +26,12 @@ from .serializers import (
     PatientSerializer, PatientRequestSerializer,
     AppointmentRequestSerializer, AppointmentSerializer,
     AppointmentInfoSerializer, NotificationSerializer,
-    UserUpdatePasswordSerializer, UserGoogleLoginSerializer
+    UserUpdatePasswordSerializer, UserGoogleLoginSerializer,
+    UserRequestNewPasswordSerializer
 )
 from .permissions import IsAdmin, IsUser, IsAdminOrUser
-
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
 
 # ============================================================================
 # UTILIDADES JWT
@@ -270,9 +272,33 @@ def user_login_google(request):
         return Response(response_data, status=status.HTTP_200_OK)
 
     except ValueError:
-        return Response(status=status.HTTP_400_BAD_REQUEST)    
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def user_request_password_update(request):
+    serializer = UserRequestNewPasswordSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    data = serializer.validated_data
+    try:
+        user = Usuario.objects.get(email=data["email"])
+        if not user:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        
+        if user.modo_google or not user.cadastro_confirmado:
+            return Response(status=status.HTTP_403_FORBIDDEN)
+        
+        subject = 'Alteração de Senha - Agendinha do GRAACC'
+        text_content = 'E-mail para alteração de senha'
+        html_message = render_to_string('password_reset_email.html', {'user': user })
+        msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [data["email"]])
+        msg.attach_alternative(html_message, "text/html")
+        msg.send()
+        return Response(status=status.HTTP_200_OK)
+    except ValueError:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 @extend_schema(
     tags=['Autenticação - Usuários'],

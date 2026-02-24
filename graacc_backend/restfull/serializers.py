@@ -54,6 +54,8 @@ class UserLoginResponseSerializer(serializers.Serializer):
     nome = serializers.CharField()
     token = serializers.CharField()
 
+class UserRequestNewPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField()
 
 class UserUpdateSerializer(serializers.Serializer):
     """
