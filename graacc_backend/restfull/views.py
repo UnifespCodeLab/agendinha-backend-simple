@@ -327,10 +327,20 @@ def user_confirm(request):
     Migrado de: UserController.confirmUser()
     """
     user_info = request.data
-    user = Usuario.objects.get(pk=user_info['id_usuario'])
+    user = None
+
+    if 'id_usuario' in user_info:
+        user = Usuario.objects.get(pk=user_info['id_usuario'])
+    elif 'email' in user_info:
+        user = Usuario.objects.get(email=user_info['email'])
+    else:
+        return Response(
+            {"detail": "id_usuario or email must be provided."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
     user.cadastro_confirmado = True
     user.save()
-    
     return Response(status=status.HTTP_200_OK)
 
 
