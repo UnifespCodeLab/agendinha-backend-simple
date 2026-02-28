@@ -301,15 +301,21 @@ def user_request_password_update(request):
         if user.modo_google or not user.cadastro_confirmado:
             return Response(status=status.HTTP_403_FORBIDDEN)
         
-        subject = 'Alteração de Senha - Agendinha do GRAACC'
-        text_content = 'E-mail para alteração de senha'
-        html_message = render_to_string('password_reset_email.html', {'user': user })
-        msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [data["email"]])
-        msg.attach_alternative(html_message, "text/html")
-        msg.send()
+        user_request_password_update_email(user)
+
         return Response(status=status.HTTP_200_OK)
     except ValueError:
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+def user_request_password_update_email(user: Usuario):
+    token = user.make_token()
+    reset_link = f"{settings.FRONTEND_URL}/senha/{user.id_usuario}/{token}"
+    subject = 'Alteração de Senha - Agendinha do GRAACC'
+    text_content = 'E-mail para alteração de senha'
+    html_message = render_to_string('password_reset_email.html', {'nome': user.nome, 'reset_link': reset_link })
+    msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [user.email])
+    msg.attach_alternative(html_message, "text/html")
+    msg.send()    
 
 @extend_schema(
     tags=['Autenticação - Usuários'],
@@ -464,7 +470,28 @@ def user_password_update(request):
             {"message": "Não foi possível atualizar a senha do usuário."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['PUT'])
+@permission_classes([AllowAny])
+def user_password_update_without_auth(request):
+    id = request.data['id']
+    try:
+        user = Usuario.objects.get(id_usuario=id)
+        if not user:
+            return Response(
+                {"message": "Usuário não encontrado."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        user.set_password(request.data['senha_nova'])
+        user.save()
+        return Response(status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"message": "Não foi possível atualizar a senha do usuário."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
     
+
 @extend_schema(
     tags=['Autenticação - Usuários'],
     summary='Deletar usuário',
