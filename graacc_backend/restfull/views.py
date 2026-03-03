@@ -824,9 +824,9 @@ def appointment_create(request):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    # Busca paciente pelo nome
+    # Busca paciente por id
     try:
-        paciente = Paciente.objects.get(nome=serializer.validated_data['nome_completo_paciente'])
+        paciente = Paciente.objects.get(id_paciente=request.data['id_paciente'])
     except Paciente.DoesNotExist:
         return Response(
             {"message": "Erro ao inserir Agendamento - Paciente nao encontrado."},
