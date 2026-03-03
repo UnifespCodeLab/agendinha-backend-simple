@@ -178,6 +178,9 @@ class AppointmentInfoSerializer(serializers.Serializer):
     """
     id_agendamento = serializers.IntegerField()
     data_agendamento = serializers.CharField()  # Formato: "dd/MM/yyyy HH:mm"
+    id_paciente = serializers.IntegerField(source='paciente.id_paciente', read_only=True)
+    descricao = serializers.CharField(max_length=100)
+    titulo = serializers.CharField(max_length=100)
 
     def validate_data_agendamento(self, value):
         """
@@ -202,7 +205,7 @@ class NotificationSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Notificacao
-        fields = ['id_notificacao', 'data', 'lida', 'id_agendamento']
+        fields = ['id_notificacao', 'data', 'lida', 'id_agendamento', 'id_paciente', 'titulo', 'descricao']
         read_only_fields = ['id_notificacao']
 
     def get_data(self, obj):

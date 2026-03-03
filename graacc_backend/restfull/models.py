@@ -176,7 +176,8 @@ class Notificacao(models.Model):
     id_agendamento = models.BigIntegerField()
     data = models.DateTimeField()
     lida = models.BooleanField(default=False)
-    mensagem = models.TextField(null=True, blank=True)
+    titulo = models.TextField(null=True, blank=True)
+    descricao = models.TextField(null=True, blank=True)
     id_paciente = models.BigIntegerField(null=True, blank=True)
 
     class Meta:
