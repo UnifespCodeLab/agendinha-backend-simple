@@ -133,7 +133,7 @@ class AppointmentRequestSerializer(serializers.Serializer):
     data = serializers.CharField()  # Formato: "dd/MM/yyyy HH:mm"
     local = serializers.CharField(max_length=100)
     medico = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    nome_completo_paciente = serializers.CharField(max_length=255)
+    id_paciente = serializers.IntegerField(read_only=True)
 
     def validate_data(self, value):
         """
