@@ -177,6 +177,7 @@ class Notificacao(models.Model):
     data = models.DateTimeField()
     lida = models.BooleanField(default=False)
     mensagem = models.TextField(null=True, blank=True)
+    id_paciente = models.BigIntegerField(null=True, blank=True)
 
     class Meta:
         db_table = 'notificacao'
@@ -191,3 +192,14 @@ class Notificacao(models.Model):
 
     def __str__(self):
         return f"Notificação {self.id_notificacao} - Agendamento {self.id_agendamento}"
+
+class PushSubscription(models.Model):
+    id_usuario = models.BigIntegerField()
+    endpoint = models.URLField(max_length=255)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+
+    class Meta:
+        db_table = 'pushsubscription'
+        verbose_name = 'PushSubscription'
+        verbose_name_plural = 'PushSubscriptions'
