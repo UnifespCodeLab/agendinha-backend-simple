@@ -57,9 +57,12 @@ urlpatterns = [
     # ========================================================================
     path('notificacoes', views.notification_create, name='notification-create'),  # POST
     path('notificacoes/conjunto', views.notification_create_batch, name='notification-create-batch'),  # POST
-    path('notificacoes/<int:id_agendamento>', views.notification_list_by_appointment, name='notification-list'),  # GET
+    path('notificacoes/paciente/<int:id_agendamento>', views.notification_list_by_appointment, name='notification-list'),  # GET
+    path('notificacoes/<int:id_paciente>', views.notification_list_by_patient, name='notification-list-by-patient'),  # GET
     path('notificacoes/naoLidas', views.notification_list_unread, name='notification-list-unread'),  # POST
     path('notificacoes/<int:id_notificacao>/lida', views.notification_mark_as_read, name='notification-mark-read'),  # POST
+
+    path("salvar-inscricao", views.save_subscription, name="save_subscription"),
 ]
 
 # URLs que precisam de tratamento especial para métodos HTTP diferentes

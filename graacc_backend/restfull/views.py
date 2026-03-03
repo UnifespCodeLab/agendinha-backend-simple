@@ -4,6 +4,8 @@ Migradas dos Controllers dos microserviços Java Spring Boot
 """
 from google.oauth2 import id_token
 from google.auth.transport import requests
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.response import Response
@@ -34,6 +36,11 @@ from .permissions import IsAdmin, IsUser, IsAdminOrUser
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from datetime import datetime, timedelta
+from .models import PushSubscription
+from pywebpush import webpush
+#from django.views.decorators.csrf import csrf_exempt
+import json
 
 # ============================================================================
 # UTILIDADES JWT
@@ -286,6 +293,84 @@ def user_login_google(request):
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
+@permission_classes([IsAdminOrUser])
+def appointment_export_task_to_google_calendar(request):
+    creds_data = request.data['credentials']
+
+    if not creds_data:
+        return redirect('google_auth')
+
+    creds = Credentials(**creds_data)
+    service = build('calendar', 'v3', credentials=creds)
+
+    serializer = AppointmentSerializer(data=request.data['agendamentos'])
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    data = serializer.validated_data    
+    
+    dt = datetime.fromisoformat(data_data)
+    new_dt = dt + timedelta(hours=1)
+    new_iso_time = new_dt.isoformat()
+
+    event = {
+        'summary': data.titulo,
+        'description': data.descricao + ', ' + data.medico + ', ' + data.local,
+        'start': {
+            'dateTime': data.data,
+            'timeZone': 'UTC',
+        },
+        'end': {
+            'dateTime': new_iso_time,
+            'timeZone': 'UTC',
+        },
+    }
+
+    event = service.events().insert(calendarId='primary', body=event).execute()
+
+    return Response({"event_link": event.get('htmlLink')}, status=status.HTTP_200_OK)
+
+@api_view(['POST'])
+@permission_classes([IsAdminOrUser])
+def save_subscription(request):
+    data = json.loads(request.body)
+
+    PushSubscription.objects.update_or_create(
+        id_usuario=data["id_usuario"],
+        endpoint=data["endpoint"],
+        defaults={
+            "p256dh": data["keys"]["p256dh"],
+            "auth": data["keys"]["auth"],
+        }
+    )
+
+    send_push(data['id_usuario'], "bololo", "haha")
+
+    return Response({"status": "saved"}, status=status.HTTP_200_OK)
+
+def send_push(id_usuario, title, body, url="/"):
+    subscriptions = PushSubscription.objects.filter(id_usuario=id_usuario)
+
+    for sub in subscriptions:
+        webpush(
+            subscription_info={
+                "endpoint": sub.endpoint,
+                "keys": {
+                    "p256dh": sub.p256dh,
+                    "auth": sub.auth,
+                },
+            },
+            data=json.dumps({
+                "title": title,
+                "body": body,
+                "url": url,
+            }),
+            vapid_private_key=settings.VAPID_PRIVATE_KEY,
+            vapid_claims={
+                "sub": settings.VAPID_ADMIN_EMAIL,
+            },
+        )
+
+@api_view(['POST'])
 @permission_classes([AllowAny])
 def user_request_password_update(request):
     serializer = UserRequestNewPasswordSerializer(data=request.data)
@@ -368,7 +453,15 @@ def user_get(request):
     user_info = request.user
     user = Usuario.objects.get(id_usuario=user_info.id_usuario)
     serializer = UserSerializer(user)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+
+    paciente = Paciente.objects.get(id_paciente=serializer.data['id_paciente'])
+    user_with_patient = {k: v for k, v in serializer.data.items() if k != "id_paciente"}
+    user_with_patient['paciente'] = PatientSerializer(paciente).data
+
+    notificacoes = Notificacao.objects.filter(id_paciente=serializer.data['id_paciente'])
+    user_with_patient['notificacoes'] = NotificationSerializer(notificacoes, many=True).data
+
+    return Response(user_with_patient, status=status.HTTP_200_OK)
 
 
 @extend_schema(
@@ -852,7 +945,8 @@ def appointment_create(request):
             descricao=serializer.validated_data['descricao'],
             data=data_agendamento,
             local=serializer.validated_data['local'],
-            paciente=paciente
+            paciente=paciente,
+            medico=request.data['medico']
         )
         agendamento.save()
         
@@ -1192,6 +1286,21 @@ def notification_list_by_appointment(request, id_agendamento):
     serializer = NotificationSerializer(notificacoes, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
+@api_view(['GET'])
+@permission_classes([IsAdminOrUser])
+def notification_list_by_patient(request, id_paciente):
+    """
+    GET /notificacoes/{idPaciente}
+    Lista notificações de um agendamento
+    Migrado de: NotificationController.findNotification()
+    """
+    notificacoes = Notificacao.objects.filter(id_paciente=id_paciente)
+    
+    if not notificacoes.exists():
+        return Response(status=status.HTTP_204_NO_CONTENT)
+    
+    serializer = NotificationSerializer(notificacoes, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @extend_schema(
     tags=['Notificações'],

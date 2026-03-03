@@ -39,6 +39,10 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
+VAPID_PUBLIC_KEY = "BMcNxhRd77nxDqIprvvNxD6agEHNGLW4cfp24xPK1POI3aFbThkqc2A6dhaMWj_hyFDk4uKp7zngzW81K08-pE"
+VAPID_PRIVATE_KEY = "D0MwFo56VXf-Du7PToOkuldFfY0aXYNRuJHBMq-sfd8"
+VAPID_ADMIN_EMAIL = "mailto:admin@example.com"
+
 # Application definition
 
 INSTALLED_APPS = [
