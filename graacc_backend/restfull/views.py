@@ -349,7 +349,7 @@ def save_subscription(request):
 
 def send_push(id_usuario, title, body, url="/"):
     subscriptions = PushSubscription.objects.filter(id_usuario=id_usuario)
-
+    print(subscriptions[0].p256dh)
     for sub in subscriptions:
         webpush(
             subscription_info={
@@ -1191,7 +1191,10 @@ def notification_create(request):
         notificacao = Notificacao(
             id_agendamento=serializer.validated_data['id_agendamento'],
             data=data,
-            lida=False
+            lida=False,
+            id_paciente=serializer.validated_data['titulo'],
+            titulo=serializer.validated_data['titulo'],
+            descricao=serializer.validated_data['descricao'],
         )
         notificacao.save()
         notifications.append(notificacao)
@@ -1390,6 +1393,23 @@ def notification_delete_by_appointment(request, id_agendamento):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+@api_view(['DELETE'])
+@permission_classes([IsAdminOrUser])
+@transaction.atomic
+def notification_delete_by_id(request, id_notificacao):
+    """
+    DELETE /notificacoes/id/{idNotificacao}
+    Deleta a notificação a partir de um id
+    Migrado de: NotificationController.deleteNotifications()
+    """
+    try:
+        Notificacao.objects.filter(id_notificacao=id_notificacao).delete()
+        return Response(status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"message": "Erro ao deletar notificação."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 # ============================================================================
 # HEALTH CHECK
