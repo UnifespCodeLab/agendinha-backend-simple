@@ -50,6 +50,7 @@ urlpatterns = [
     path('agendamentos', views.appointment_list, name='appointment-list'),  # GET (ADMIN)
     path('agendamentos/<int:id>', views.appointment_get, name='appointment-get'),  # GET
     path('agendamentos/usuario', views.appointment_list_user, name='appointment-list-user'),  # GET (USER)
+    path('agendamentos/google', views.appointment_export_task_to_google_calendar, name='appointment-export-task-to-google-calendar'),  # POST (USER)
     # Nota: POST, PUT, DELETE serão tratados com views específicas
     
     # ========================================================================

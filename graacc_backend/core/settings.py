@@ -5,6 +5,7 @@ Migrado de microserviços Java Spring Boot para Django
 """
 
 import os
+import json
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
@@ -14,6 +15,8 @@ load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+CREDENTIALS_PATH = os.path.join(BASE_DIR, "credentials.json")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-^51b%c6yj(c%ep(*w3(g4xd_ca==05mufj!*91gbdxs@w+%x%@')
