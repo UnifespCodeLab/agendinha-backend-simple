@@ -294,21 +294,16 @@ def user_login_google(request):
 
 @api_view(['POST'])
 @permission_classes([IsAdminOrUser])
-def appointment_export_task_to_google_calendar(request):
-    creds_data = request.data['credentials']
-
-    if not creds_data:
-        return redirect('google_auth')
-
-    creds = Credentials(**creds_data)
-    service = build('calendar', 'v3', credentials=creds)
-
+def appointment_export_task_to_google_calendar(request):   
     serializer = AppointmentSerializer(data=request.data['agendamentos'])
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    data = serializer.validated_data    
+    data = serializer.validated_data
+
+    creds = Credentials.from_authorized_user_file("credentials.json", ["https://www.googleapis.com"])
+    service = build('calendar', 'v3', credentials=creds)
     
-    dt = datetime.fromisoformat(data_data)
+    dt = datetime.fromisoformat(data.data)
     new_dt = dt + timedelta(hours=1)
     new_iso_time = new_dt.isoformat()
 
@@ -327,7 +322,7 @@ def appointment_export_task_to_google_calendar(request):
 
     event = service.events().insert(calendarId='primary', body=event).execute()
 
-    return Response({"event_link": event.get('htmlLink')}, status=status.HTTP_200_OK)
+    return Response({"event_id": event["id"]}, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
 @permission_classes([IsAdminOrUser])
@@ -343,7 +338,7 @@ def save_subscription(request):
         }
     )
 
-    send_push(data['id_usuario'], "bololo", "haha")
+    send_push(data['id_usuario'], "Notificação", "Agendinha")
 
     return Response({"status": "saved"}, status=status.HTTP_200_OK)
 
