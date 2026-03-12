@@ -10,6 +10,10 @@ from django.utils.crypto import constant_time_compare
 import hmac
 import hashlib
 from django.conf import settings
+from requests import get
+from django.core.files.temp import NamedTemporaryFile
+import os
+from django.core.files import File
 
 # ============================================================================
 # USUÁRIOS (migrado do MS Usuários)
@@ -104,6 +108,16 @@ class Usuario(models.Model):
 
     def __str__(self):
         return f"{self.nome} ({self.email})"
+
+    def save_image_from_url(self, url):
+        """Fetches and saves an image from a URL."""
+        if url:
+            response = get(url)
+            if response.status_code == 200:
+                img_temp = NamedTemporaryFile(delete=True)
+                img_temp.write(response.content)
+                img_temp.flush()
+                self.foto_perfil.save(os.path.basename(url), File(img_temp), save=True)
 
 
 # ============================================================================
