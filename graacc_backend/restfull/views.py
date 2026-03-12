@@ -19,8 +19,6 @@ import jwt
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
-from django.utils.encoding import force_str
-from django.utils.http import urlsafe_base64_decode
 from .models import Usuario, Paciente, Agendamento, Notificacao, Role
 from .serializers import (
     UserRegisterSerializer, UserRegisterWithPatientIdSerializer,
@@ -224,7 +222,7 @@ def user_login(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        user = Usuario.objects.get(email=serializer.validated_data['email'])
+        user = Usuario.objects.get(email=serializer.validated_data['email'])   
     except Usuario.DoesNotExist:
         return Response(status=status.HTTP_400_BAD_REQUEST)
     
@@ -233,13 +231,24 @@ def user_login(request):
         return Response(status=status.HTTP_400_BAD_REQUEST)
     
     if user.modo_google:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(status=status.HTTP_401_UNAUTHORIZED)
+
+    user_serializer = UserSerializer(user)
+    user_without_patient = {k: v for k, v in user_serializer.data.items() if k != "id_paciente"}
+
+    patient_obj = Paciente.objects.get(id_paciente=user_serializer.data['id_paciente'])
+    patient_data = PatientSerializer(patient_obj).data
+
+    notifications_obj = Notificacao.objects.filter(id_paciente=user_serializer.data['id_paciente'])
+    notifications_data = NotificationSerializer(notifications_obj, many=True).data
 
     # Gera token JWT customizado
     token = generate_custom_jwt(user)
     
     response_data = {
-        'nome': user.nome,
+        'usuario': user_without_patient,
+        'paciente': patient_data,
+        'notificacoes': notifications_data,
         'token': token
     }
     
@@ -267,26 +276,44 @@ def user_login_google(request):
 
         user, created = Usuario.objects.get_or_create(email=email)
 
+        # Gera token JWT customizado
+        token = generate_custom_jwt(user)
+
         if created:
             user.nome = f"{first_name} {last_name}"
             user.modo_google = True
+            user.save_image_from_url(id['picture'])
             user.save()
+
+            user_serializer = UserSerializer(user)
+            user_without_patient = {k: v for k, v in user_serializer.data.items() if k != "id_paciente"}
+            
+            response_data = {
+                'usuario': user_without_patient,
+                'paciente': {},
+                'notificacoes': [],
+                'token': token,
+            }
         else:
             if not user.modo_google:
                 return Response({
                     "error": "Usuário precisa logar via e-mail.",
                 }, status=status.HTTP_403_FORBIDDEN)
-        
-        # Gera token JWT customizado
-        token = generate_custom_jwt(user)
-        
-        response_data = {
-            'nome': user.nome,
-            'token': token,
-            'cadastro_confirmado': user.cadastro_confirmado,
-            'email': email
-        }
-        
+            
+            user_serializer = UserSerializer(user)
+            user_without_patient = {k: v for k, v in user_serializer.data.items() if k != "id_paciente"}
+            patient_obj = Paciente.objects.get(id_paciente=user_serializer.data['id_paciente'])
+            patient_data = PatientSerializer(patient_obj).data
+            notifications_obj = Notificacao.objects.filter(id_paciente=user_serializer.data['id_paciente'])
+            notifications_data = NotificationSerializer(notifications_obj, many=True).data
+            
+            response_data = {
+                'usuario': user_without_patient,
+                'paciente': patient_data,
+                'notificacoes': notifications_data,
+                'token': token,
+            }
+
         return Response(response_data, status=status.HTTP_200_OK)
 
     except ValueError:
@@ -881,12 +908,13 @@ def patient_search_by_id(request, id):
     """
     try:
         paciente = Paciente.objects.get(id_paciente=id)
-        return Response(
-            PatientSerializer(paciente).data,
-            status=status.HTTP_200_OK
-        )
     except Paciente.DoesNotExist:
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+
+    return Response(
+        PatientSerializer(paciente).data,
+        status=status.HTTP_200_OK
+    )
 
 
 # ============================================================================
