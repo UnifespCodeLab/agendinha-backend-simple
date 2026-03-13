@@ -30,7 +30,9 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # OAuth2
-GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', 'gp.apps.googleusercontent.com')
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+GOOGLE_TOKEN_URI = os.getenv('GOOGLE_TOKEN_URI')
 FRONTEND_URL = "http://localhost:3000"
 SECRET_KEY = "graacc"
 
