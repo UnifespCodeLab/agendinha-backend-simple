@@ -38,6 +38,7 @@ from datetime import datetime, timedelta
 from .models import PushSubscription
 from pywebpush import webpush
 #from django.views.decorators.csrf import csrf_exempt
+from google_auth_oauthlib.flow import InstalledAppFlow
 import json
 
 # ============================================================================
@@ -319,37 +320,66 @@ def user_login_google(request):
     except ValueError:
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
+def convert_to_iso(date_string):
+    input_format = "%d/%m/%Y %H:%M"
+    
+    dt_obj = datetime.strptime(date_string, input_format)
+    
+    return dt_obj.isoformat()
+
 @api_view(['POST'])
 @permission_classes([IsAdminOrUser])
-def appointment_export_task_to_google_calendar(request):   
-    serializer = AppointmentSerializer(data=request.data['agendamentos'])
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    data = serializer.validated_data
+def appointment_export_task_to_google_calendar(request):
+    appointment = request.data['exam']
 
-    creds = Credentials.from_authorized_user_file("credentials.json", ["https://www.googleapis.com"])
-    service = build('calendar', 'v3', credentials=creds)
-    
-    dt = datetime.fromisoformat(data.data)
+    appointment_date = convert_to_iso(appointment['data'])
+    dt = datetime.fromisoformat(appointment_date)
     new_dt = dt + timedelta(hours=1)
     new_iso_time = new_dt.isoformat()
 
-    event = {
-        'summary': data.titulo,
-        'description': data.descricao + ', ' + data.medico + ', ' + data.local,
+    task = {
+        'summary': appointment['titulo'],
+        'location': appointment['local'],
+        'description': appointment['descricao'] + ', Médico responsável: ' + appointment['medico'],
         'start': {
-            'dateTime': data.data,
-            'timeZone': 'UTC',
+            'dateTime': appointment_date,
+            'timeZone': 'America/Sao_Paulo',
         },
         'end': {
             'dateTime': new_iso_time,
-            'timeZone': 'UTC',
+            'timeZone': 'America/Sao_Paulo',
         },
+        'colorId': 6,
     }
 
-    event = service.events().insert(calendarId='primary', body=event).execute()
+    new_tokens = {}
 
-    return Response({"event_id": event["id"]}, status=status.HTTP_200_OK)
+    try:
+        tokens = request.data['tokens']
+        credentials = Credentials(
+            token=tokens['access_token'],
+            refresh_token=tokens['refresh_token'],
+            id_token=tokens['id_token'],
+            token_uri=settings.GOOGLE_TOKEN_URI,
+            client_id=settings.GOOGLE_CLIENT_ID,
+            client_secret=settings.GOOGLE_CLIENT_SECRET,
+            scopes=['https://www.googleapis.com/auth/calendar'],
+            default_scopes=[]
+        )
+        service = build('calendar', 'v3', credentials=credentials)
+        event = service.events().insert(calendarId='primary', body=task).execute()
+    except:
+        flow = InstalledAppFlow.from_client_secrets_file(
+            "credentials.json", ['https://www.googleapis.com/auth/calendar']
+        )
+        credentials = flow.run_local_server(port=8002)
+        event = service.events().insert(calendarId='primary', body=task).execute()
+        new_tokens = credentials.to_json()
+    
+    if event['status'] == 'confirmed':
+        return Response({"event_id": event["id"], "tokens": new_tokens}, status=status.HTTP_200_OK)
+    
+    return Response({"error": "Não foi possível criar um agendamento."}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 @permission_classes([IsAdminOrUser])
