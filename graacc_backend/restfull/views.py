@@ -401,7 +401,6 @@ def save_subscription(request):
 
 def send_push(id_usuario, title, body, url="/"):
     subscriptions = PushSubscription.objects.filter(id_usuario=id_usuario)
-    print(subscriptions[0].p256dh)
     for sub in subscriptions:
         webpush(
             subscription_info={

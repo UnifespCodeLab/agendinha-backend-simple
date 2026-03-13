@@ -209,7 +209,7 @@ class Notificacao(models.Model):
         return f"Notificação {self.id_notificacao} - Agendamento {self.id_agendamento}"
 
 class PushSubscription(models.Model):
-    id_usuario = models.BigIntegerField()
+    id_usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE)
     endpoint = models.URLField(max_length=255)
     p256dh = models.CharField(max_length=255)
     auth = models.CharField(max_length=255)
