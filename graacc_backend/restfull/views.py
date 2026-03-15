@@ -395,8 +395,6 @@ def save_subscription(request):
         }
     )
 
-    send_push(data['id_usuario'], "Notificação", "Agendinha")
-
     return Response({"status": "saved"}, status=status.HTTP_200_OK)
 
 def send_push(id_usuario, title, body, url="/"):
@@ -1001,6 +999,11 @@ def appointment_create(request):
             medico=request.data['medico']
         )
         agendamento.save()
+
+        user = Usuario.objects.get(id_paciente=request.data['id_paciente'])
+        if user.notificacoes:
+            send_push(user.id_usuario, "Notificação", "Novo agendamento marcado.")
+            notification_create(request)
         
         return Response(
             AppointmentSerializer(agendamento).data,

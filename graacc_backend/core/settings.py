@@ -232,7 +232,7 @@ SPECTACULAR_SETTINGS = {
             'BearerAuth': []
         }
     ],
-    'COMPONENTS': {
+    'APPEND_COMPONENTS': {
         'securitySchemes': {
             'BearerAuth': {
                 'type': 'http',

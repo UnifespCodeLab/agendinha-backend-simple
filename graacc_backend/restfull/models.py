@@ -43,6 +43,8 @@ class Usuario(models.Model):
     id_paciente = models.BigIntegerField(null=True, blank=True)
     foto_perfil = models.ImageField(upload_to='images/', null=True, blank=True)
     modo_google = models.BooleanField(default=False, null=False)
+    timeout_seconds = models.BigIntegerField(blank=True, default=10000)
+    ativar_notificacoes = models.BooleanField(default=True, null=False)
 
     def make_token(self) -> str:
         timestamp = int(time.time())
