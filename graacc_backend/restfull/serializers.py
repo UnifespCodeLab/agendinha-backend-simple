@@ -90,7 +90,7 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Usuario
-        fields = ['id_usuario', 'nome', 'email', 'cadastro_confirmado', 'role', 'id_paciente', 'foto_perfil']
+        fields = ['id_usuario', 'nome', 'email', 'cadastro_confirmado', 'role', 'id_paciente', 'foto_perfil', 'ativar_notificacoes']
         read_only_fields = ['id_usuario', 'cadastro_confirmado', 'role', 'id_paciente']
 
 
