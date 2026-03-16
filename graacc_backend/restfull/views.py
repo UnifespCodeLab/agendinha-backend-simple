@@ -575,6 +575,26 @@ def user_update(request):
 
 @api_view(['PUT'])
 @permission_classes([IsAdminOrUser])
+def user_notification_status_update(request):
+    user_id = request.data['id']
+    appointments = request.data['appointments']
+    graacc = request.data['graacc']
+
+    try:
+        user = Usuario.objects.get(id_usuario=user_id)
+        user.ativar_notificacoes_consultas = appointments
+        user.ativar_notificacoes_graacc = graacc
+        user.save()
+        return Response(status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"message": "Não foi possível atualizar o status de notificação do Usuário."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['PUT'])
+@permission_classes([IsAdminOrUser])
 @parser_classes([MultiPartParser, FormParser])
 def user_avatar_update(request):
     user_id = request.data['id']

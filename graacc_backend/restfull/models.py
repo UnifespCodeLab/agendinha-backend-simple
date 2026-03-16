@@ -44,7 +44,8 @@ class Usuario(models.Model):
     foto_perfil = models.ImageField(upload_to='images/', null=True, blank=True)
     modo_google = models.BooleanField(default=False, null=False)
     timeout_seconds = models.BigIntegerField(blank=True, default=10000)
-    ativar_notificacoes = models.BooleanField(default=True, null=False)
+    ativar_notificacoes_consultas = models.BooleanField(default=True, null=False)
+    ativar_notificacoes_graacc = models.BooleanField(default=True, null=False)
 
     def make_token(self) -> str:
         timestamp = int(time.time())
