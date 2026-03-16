@@ -386,8 +386,10 @@ def appointment_export_task_to_google_calendar(request):
 def save_subscription(request):
     data = json.loads(request.body)
 
+    user = Usuario.objects.get(id_usuario=data["id_usuario"])
+
     PushSubscription.objects.update_or_create(
-        id_usuario=data["id_usuario"],
+        id_usuario=user,
         endpoint=data["endpoint"],
         defaults={
             "p256dh": data["keys"]["p256dh"],
@@ -417,7 +419,7 @@ def send_push(id_usuario, title, body, url="/"):
             vapid_claims={
                 "sub": settings.VAPID_ADMIN_EMAIL,
             },
-        )
+        )    
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
