@@ -999,11 +999,6 @@ def appointment_create(request):
             medico=request.data['medico']
         )
         agendamento.save()
-
-        user = Usuario.objects.get(id_paciente=request.data['id_paciente'])
-        if user.notificacoes:
-            send_push(user.id_usuario, "Notificação", "Novo agendamento marcado.")
-            notification_create(request)
         
         return Response(
             AppointmentSerializer(agendamento).data,
@@ -1011,7 +1006,7 @@ def appointment_create(request):
         )
     except Exception as e:
         return Response(
-            {"message": "Erro ao inserir Agendamento."},
+            {"message": "Erro ao inserir Agendamento.", "error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -1247,12 +1242,16 @@ def notification_create(request):
             id_agendamento=serializer.validated_data['id_agendamento'],
             data=data,
             lida=False,
-            id_paciente=serializer.validated_data['titulo'],
+            id_paciente=request.data['id_paciente'],
             titulo=serializer.validated_data['titulo'],
             descricao=serializer.validated_data['descricao'],
         )
         notificacao.save()
         notifications.append(notificacao)
+
+        user = Usuario.objects.get(id_paciente=request.data['id_paciente'])
+
+        send_push(user.id_usuario, "Notificação", "Novo agendamento marcado.")
     
     response_serializer = NotificationSerializer(notifications, many=True)
     return Response(response_serializer.data, status=status.HTTP_200_OK)
