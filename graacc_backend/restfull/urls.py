@@ -10,6 +10,11 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     # ========================================================================
+    # PÁGINAS HTML ESTÁTICAS
+    # ========================================================================
+    path('criar-paciente', views.create_patient_page, name='create-patient-page'),
+
+    # ========================================================================
     # HEALTH CHECK
     # ========================================================================
     path('hello', views.hello_world, name='hello'),
