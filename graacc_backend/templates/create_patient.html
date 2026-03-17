@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+    <title>Inserir paciente</title>
+    <script src="{% static 'js/admin.js' %}"></script>
+    <body>
+        {% csrf_token %}
+        <label for="name">Nome: </label>
+        <input type="text" id="name" name="name"><br>
+        <label for="phone">Telefone: </label>
+        <input type="text" id="phone" name="phone"><br>
+        <button onclick="createPatient()">Criar paciente</button>
+        <script>
+            async function createPatient() {
+                const data = await adminLogin(
+                    'admin@admin.com',
+                    'admin',
+                    document.getElementsByName('csrfmiddlewaretoken')[0].value
+                );
+                
+                const nome = document.getElementById("name").value;
+                const telefone = document.getElementById("phone").value;
+                const csrftoken = document.getElementsByName("csrfmiddlewaretoken")[0].value;
+                const response = await fetch("/graacc/api/pacientes/create", 
+                {
+                    method: "POST",
+                    headers: {
+                        'X-CSRFToken': csrftoken,
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${data['token']}`
+                    },
+                    body: JSON.stringify({
+                        nome, telefone
+                    })
+                });
+            }
+        </script>
+
+    </body>
+</html>

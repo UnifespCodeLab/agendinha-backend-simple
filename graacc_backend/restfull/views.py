@@ -39,7 +39,15 @@ from .models import PushSubscription
 from pywebpush import webpush
 #from django.views.decorators.csrf import csrf_exempt
 from google_auth_oauthlib.flow import InstalledAppFlow
+from django.shortcuts import render
+
 import json
+
+# ============================================================================
+# ARQUIVOS ESTÁTICOS E TEMPLATES
+# ============================================================================
+def create_patient_page(request):
+    return render(request, 'create_patient.html', {})
 
 # ============================================================================
 # UTILIDADES JWT

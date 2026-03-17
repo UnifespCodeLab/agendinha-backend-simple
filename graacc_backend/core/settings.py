@@ -246,3 +246,7 @@ SPECTACULAR_SETTINGS = {
 # Security Token para JWT (mesmo token dos microserviços Java)
 SECURITY_TOKEN = os.getenv('SECURITY_TOKEN', SECRET_KEY)
 SECURITY_EMISSOR = os.getenv('SECURITY_EMISSOR', 'graacc-api-django')
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
