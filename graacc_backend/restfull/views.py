@@ -49,6 +49,12 @@ import json
 def create_patient_page(request):
     return render(request, 'create_patient.html', {})
 
+def create_appointment_page(request):
+    return render(request, 'create_appointment.html', {})
+
+def create_notification_page(request):
+    return render(request, 'create_notification.html', {})
+
 # ============================================================================
 # UTILIDADES JWT
 # ============================================================================
