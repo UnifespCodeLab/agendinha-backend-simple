@@ -13,6 +13,8 @@ urlpatterns = [
     # PÁGINAS HTML ESTÁTICAS
     # ========================================================================
     path('criar-paciente', views.create_patient_page, name='create-patient-page'),
+    path('criar-agendamento', views.create_appointment_page, name='create-appointment-page'),
+    path('criar-notificacao', views.create_notification_page, name='create-notification-page'),
 
     # ========================================================================
     # HEALTH CHECK
