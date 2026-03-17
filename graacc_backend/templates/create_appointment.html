@@ -39,7 +39,7 @@
                     headers: {
                         'X-CSRFToken': csrftoken,
                         "Content-Type": "application/json",
-                        "Authorization": `Bearer ${data['token']}`
+                        "Authorization": `Bearer ${adminData['token']}`
                     },
                     body: JSON.stringify({
                         titulo, descricao, data, local, medico, id_paciente: Number(id_paciente)
