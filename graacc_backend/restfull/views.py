@@ -41,7 +41,7 @@ def generate_custom_jwt(user):
         'sub': user.email,
         'iss': settings.SECURITY_EMISSOR,
         'idUsuario': user.id_usuario,
-        'idPaciente': user.id_paciente,
+        'idPaciente': user.paciente_id,
         'role': user.role,
         'iat': datetime.utcnow(),
         'exp': datetime.utcnow() + timedelta(hours=24)
@@ -112,7 +112,7 @@ def user_register(request):
             nome=serializer.validated_data['nome'],
             email=serializer.validated_data['email'],
             role=Role.USER,
-            id_paciente=paciente.id_paciente,
+            paciente=paciente,
             cadastro_confirmado=False
         )
         user.set_password(serializer.validated_data['senha'])
@@ -167,7 +167,7 @@ def user_register_with_patient_id(request):
             nome=serializer.validated_data['nome'],
             email=serializer.validated_data['email'],
             role=Role.USER,
-            id_paciente=paciente.id_paciente,
+            paciente=paciente,
             cadastro_confirmado=False
         )
         user.set_password(serializer.validated_data['senha'])
@@ -306,7 +306,7 @@ def user_update(request):
             if serializer.validated_data.get('nome_completo_paciente'):
                 try:
                     paciente = Paciente.objects.get(nome=serializer.validated_data['nome_completo_paciente'])
-                    user.id_paciente = paciente.id_paciente
+                    user.paciente = paciente
                 except Paciente.DoesNotExist:
                     return Response(
                         {"message": "Não existe nenhum paciente com esse nome"},
@@ -387,7 +387,7 @@ def admin_register(request):
             nome=serializer.validated_data['nome'],
             email=serializer.validated_data['email'],
             role=Role.ADMIN,
-            id_paciente=None,
+            paciente=None,
             cadastro_confirmado=False
         )
         admin.set_password(serializer.validated_data['senha'])
