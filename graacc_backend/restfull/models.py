@@ -22,7 +22,7 @@ class Usuario(models.Model):
     Model de Usuário
     Migrado de: org.codelab.graacc.Usuarios.entity.UserEntity
     """
-    id_usuario = models.BigAutoField(primary_key=True)
+    id_usuario = models.BigAutoField(primary_key=True) # ✅ Restaurado!
     nome = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
     senha = models.CharField(max_length=255)
@@ -32,13 +32,22 @@ class Usuario(models.Model):
         choices=Role.choices,
         default=Role.USER
     )
-    id_paciente = models.BigIntegerField(null=True, blank=True)
+    
+    # ✅ Chave Estrangeira correta
+    paciente = models.ForeignKey(
+        'Paciente',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='id_paciente',
+        related_name='usuarios'
+    )
 
     class Meta:
         db_table = 'usuario'
         indexes = [
             models.Index(fields=['email']),
-            models.Index(fields=['id_paciente']),
+            models.Index(fields=['paciente']), # ✅ Atualizado para o nome correto
         ]
 
     def set_password(self, raw_password):
@@ -70,7 +79,7 @@ class Paciente(models.Model):
     Model de Paciente
     Migrado de: org.codelab.graacc.Agendamentos.entity.PatientEntity
     """
-    id_paciente = models.BigAutoField(primary_key=True)
+    id_paciente = models.BigAutoField(primary_key=True) # ✅ Restaurado!
     nome = models.CharField(max_length=255, unique=True)
     telefone = models.CharField(max_length=20, null=True, blank=True)
 
