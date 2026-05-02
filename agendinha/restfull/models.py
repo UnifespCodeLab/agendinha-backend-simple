@@ -98,7 +98,7 @@ class Usuario(models.Model):
         db_table = 'usuario'
         indexes = [
             models.Index(fields=['email']),
-            models.Index(fields=['paciente']), # ✅ Atualizado para o nome correto
+            models.Index(fields=['id_paciente']), # ✅ Atualizado para o nome correto
         ]
 
     def set_password(self, raw_password):
