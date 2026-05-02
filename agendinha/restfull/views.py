@@ -118,7 +118,7 @@ def user_register(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     # Busca paciente pelo nome
-    if paciente:
+    if serializer.validated_data['paciente']:
         try:
             paciente = Paciente.objects.get(nome=serializer.validated_data['nome_completo_paciente'])
         except Paciente.DoesNotExist:
@@ -140,7 +140,7 @@ def user_register(request):
             nome=serializer.validated_data['nome'],
             email=serializer.validated_data['email'],
             role=Role.USER,
-            id_paciente=paciente,
+            id_paciente=serializer.validated_data['paciente'],
             cadastro_confirmado=False
         )
         user.set_password(serializer.validated_data['senha'])
