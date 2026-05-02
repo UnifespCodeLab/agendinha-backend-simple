@@ -87,6 +87,8 @@ class UserSerializer(serializers.ModelSerializer):
     Migrado de: UserDTO
     """
     id_usuario = serializers.IntegerField(read_only=True)
+    # 🟢 AQUI ESTÁ A MUDANÇA: Extraímos o ID do paciente através da ForeignKey
+    id_paciente = serializers.IntegerField(source='paciente_id', read_only=True)
     
     class Meta:
         model = Usuario
@@ -102,7 +104,6 @@ class UserSerializer(serializers.ModelSerializer):
             'ativar_notificacoes_graacc'
         ]
         read_only_fields = ['id_usuario', 'cadastro_confirmado', 'role', 'id_paciente']
-
 
 # ============================================================================
 # SERIALIZERS DE PACIENTES
