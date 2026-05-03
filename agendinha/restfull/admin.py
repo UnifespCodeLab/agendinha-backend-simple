@@ -1,13 +1,13 @@
 from django.contrib import admin
-from .models import Usuario, Paciente, Agendamento, Notificacao
+from .models import Usuario, Responsavel, Agendamento, Notificacao
 
 @admin.register(Usuario)
 class UsuarioAdmin(admin.ModelAdmin):
     list_display = ('nome', 'email', 'role')
     search_fields = ('nome', 'email')
 
-@admin.register(Paciente)
-class PacienteAdmin(admin.ModelAdmin):
+@admin.register(Responsavel)
+class ResponsavelAdmin(admin.ModelAdmin):
     list_display = ('nome', 'telefone')
     search_fields = ('nome', 'telefone')
 

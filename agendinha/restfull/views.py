@@ -19,16 +19,15 @@ import jwt
 from django.conf import settings
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from drf_spectacular.types import OpenApiTypes
-from .models import Usuario, Paciente, Agendamento, Notificacao, Role
+from .models import Usuario, Responsavel, Agendamento, Notificacao, Role
 from .serializers import (
-    UserRegisterSerializer, UserRegisterWithPatientIdSerializer,
+    UserRegisterSerializer,
     UserLoginSerializer, UserLoginResponseSerializer, UserUpdateSerializer,
     AdminRegisterSerializer, UserSerializer,
-    PatientSerializer, PatientRequestSerializer,
     AppointmentRequestSerializer, AppointmentSerializer,
     AppointmentInfoSerializer, NotificationSerializer,
     UserUpdatePasswordSerializer, UserGoogleLoginSerializer,
-    UserRequestNewPasswordSerializer
+    UserRequestNewPasswordSerializer, GuardianSerializer, GuardianRequestSerializer
 )
 from .permissions import IsAdmin, IsUser, IsAdminOrUser
 from django.core.mail import EmailMultiAlternatives
@@ -46,8 +45,8 @@ import json
 # ============================================================================
 # ARQUIVOS ESTÁTICOS E TEMPLATES
 # ============================================================================
-def create_patient_page(request):
-    return render(request, 'create_patient.html', {})
+def create_guardian_page(request):
+    return render(request, 'create_guardian.html', {})
 
 def create_appointment_page(request):
     return render(request, 'create_appointment.html', {})
@@ -62,13 +61,12 @@ def create_notification_page(request):
 def generate_custom_jwt(user):
     """
     Gera JWT customizado compatível com os microserviços Java
-    Claims: idUsuario, idPaciente, email, role
+    Claims: idUsuario, email, role
     """
     payload = {
         'sub': user.email,
         'iss': settings.SECURITY_EMISSOR,
         'idUsuario': user.id_usuario,
-        'idPaciente': user.paciente_id,
         'role': user.role,
         'iat': datetime.utcnow(),
         'exp': datetime.utcnow() + timedelta(hours=24)
@@ -85,7 +83,7 @@ def generate_custom_jwt(user):
 @extend_schema(
     tags=['Autenticação - Usuários'],
     summary='Registrar novo usuário',
-    description='Registra um novo usuário comum associado a um paciente existente pelo nome',
+    description='Registra um novo usuário comum associado a um responsável existente pelo nome',
     request=UserRegisterSerializer,
     responses={
         200: None,
@@ -99,7 +97,7 @@ def generate_custom_jwt(user):
                 'nome': 'João Silva',
                 'email': 'joao@email.com',
                 'senha': 'senha123',
-                'nome_completo_paciente': 'Maria Silva'
+                'nome_completo_responsavel': 'Maria Silva'
             },
             request_only=True,
         ),
@@ -110,23 +108,13 @@ def generate_custom_jwt(user):
 def user_register(request):
     """
     POST /usuarios/registrar
-    Registra usuário comum associado a um paciente
+    Registra usuário comum
     Migrado de: UserController.addUser()
     """
     serializer = UserRegisterSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    # Busca paciente pelo nome
-    if serializer.validated_data['paciente']:
-        try:
-            paciente = Paciente.objects.get(nome=serializer.validated_data['nome_completo_paciente'])
-        except Paciente.DoesNotExist:
-            return Response(
-                {"message": "Não existe nenhum paciente com esse nome"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    
     # Verifica se email já existe
     if Usuario.objects.filter(email=serializer.validated_data['email']).exists():
         return Response(
@@ -140,67 +128,11 @@ def user_register(request):
             nome=serializer.validated_data['nome'],
             email=serializer.validated_data['email'],
             role=Role.USER,
-            id_paciente=serializer.validated_data['paciente'],
             cadastro_confirmado=False
         )
         user.set_password(serializer.validated_data['senha'])
         user.save()
         
-        return Response(status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response(
-            {"message": "Erro ao inserir usuario."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-
-@extend_schema(
-    tags=['Autenticação - Usuários'],
-    summary='Registrar usuário com ID do paciente',
-    description='Registra um novo usuário comum associado a um paciente pelo ID',
-    request=UserRegisterWithPatientIdSerializer,
-    responses={200: None, 400: OpenApiTypes.OBJECT, 500: OpenApiTypes.OBJECT},
-)
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def user_register_with_patient_id(request):
-    """
-    POST /usuarios/pacienteid/registrar
-    Registra usuário com ID do paciente direto
-    Migrado de: UserController.addUserWithPatientId()
-    """
-    serializer = UserRegisterWithPatientIdSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
-    # Verifica se paciente existe
-    try:
-        paciente = Paciente.objects.get(id_paciente=serializer.validated_data['id_paciente'])
-    except Paciente.DoesNotExist:
-        return Response(
-            {"message": "Não existe nenhum paciente com esse id"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-    
-    # Verifica se email já existe
-    if Usuario.objects.filter(email=serializer.validated_data['email']).exists():
-        return Response(
-            {"message": "Email já cadastrado"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-    
-    # Cria usuário
-    try:
-        user = Usuario(
-            nome=serializer.validated_data['nome'],
-            email=serializer.validated_data['email'],
-            role=Role.USER,
-            paciente=paciente,
-            cadastro_confirmado=False
-        )
-        user.set_password(serializer.validated_data['senha'])
-        user.save()
-        user_register_email_confirm(user)
         return Response(status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -250,20 +182,15 @@ def user_login(request):
         return Response(status=status.HTTP_401_UNAUTHORIZED)
 
     user_serializer = UserSerializer(user)
-    user_without_patient = {k: v for k, v in user_serializer.data.items() if k != "id_paciente"}
 
-    patient_obj = Paciente.objects.get(id_paciente=user_serializer.data['id_paciente'])
-    patient_data = PatientSerializer(patient_obj).data
-
-    notifications_obj = Notificacao.objects.filter(id_paciente=user_serializer.data['id_paciente'])
+    notifications_obj = Notificacao.objects.filter(usuario=user_serializer.data)
     notifications_data = NotificationSerializer(notifications_obj, many=True).data
 
     # Gera token JWT customizado
     token = generate_custom_jwt(user)
     
     response_data = {
-        'usuario': user_without_patient,
-        'paciente': patient_data,
+        'usuario': user_serializer,
         'notificacoes': notifications_data,
         'token': token
     }
@@ -302,11 +229,9 @@ def user_login_google(request):
             user.save()
 
             user_serializer = UserSerializer(user)
-            user_without_patient = {k: v for k, v in user_serializer.data.items() if k != "id_paciente"}
-            
+
             response_data = {
-                'usuario': user_without_patient,
-                'paciente': {},
+                'usuario': user_serializer,
                 'notificacoes': [],
                 'token': token,
             }
@@ -317,15 +242,11 @@ def user_login_google(request):
                 }, status=status.HTTP_403_FORBIDDEN)
             
             user_serializer = UserSerializer(user)
-            user_without_patient = {k: v for k, v in user_serializer.data.items() if k != "id_paciente"}
-            patient_obj = Paciente.objects.get(id_paciente=user_serializer.data['id_paciente'])
-            patient_data = PatientSerializer(patient_obj).data
-            notifications_obj = Notificacao.objects.filter(id_paciente=user_serializer.data['id_paciente'])
+            notifications_obj = Notificacao.objects.filter(id_usuario=user_serializer.data['id_usuario'])
             notifications_data = NotificationSerializer(notifications_obj, many=True).data
             
             response_data = {
-                'usuario': user_without_patient,
-                'paciente': patient_data,
+                'usuario': user_serializer,
                 'notificacoes': notifications_data,
                 'token': token,
             }
@@ -404,7 +325,7 @@ def save_subscription(request):
     user = Usuario.objects.get(id_usuario=data["id_usuario"])
 
     PushSubscription.objects.update_or_create(
-        id_usuario=user,
+        usuario=user,
         endpoint=data["endpoint"],
         defaults={
             "p256dh": data["keys"]["p256dh"],
@@ -487,7 +408,7 @@ def user_confirm(request):
     user = None
 
     if 'id_usuario' in user_info:
-        user = Usuario.objects.get(pk=user_info['id_usuario'])
+        user = Usuario.objects.get(id_usuario=user_info['id_usuario'])
     elif 'email' in user_info:
         user = Usuario.objects.get(email=user_info['email'])
     else:
@@ -520,20 +441,16 @@ def user_get(request):
     user = Usuario.objects.get(id_usuario=user_info.id_usuario)
     serializer = UserSerializer(user)
 
-    paciente = Paciente.objects.get(id_paciente=serializer.data['id_paciente'])
-    user_with_patient = {k: v for k, v in serializer.data.items() if k != "id_paciente"}
-    user_with_patient['paciente'] = PatientSerializer(paciente).data
+    notificacoes = Notificacao.objects.filter(id_usuario=serializer.data['id_usuario'])
+    serializer['notificacoes'] = NotificationSerializer(notificacoes, many=True).data
 
-    notificacoes = Notificacao.objects.filter(id_paciente=serializer.data['id_paciente'])
-    user_with_patient['notificacoes'] = NotificationSerializer(notificacoes, many=True).data
-
-    return Response(user_with_patient, status=status.HTTP_200_OK)
+    return Response(serializer, status=status.HTTP_200_OK)
 
 
 @extend_schema(
     tags=['Autenticação - Usuários'],
     summary='Atualizar dados do usuário',
-    description='Atualiza nome, email ou paciente associado do usuário autenticado',
+    description='Atualiza nome, email ou responsável associado do usuário autenticado',
     request=UserUpdateSerializer,
     responses={200: None, 400: OpenApiTypes.OBJECT, 500: OpenApiTypes.OBJECT},
 )
@@ -568,14 +485,14 @@ def user_update(request):
                     )
                 user.email = serializer.validated_data['email']
             
-            # Atualiza paciente se fornecido
-            if serializer.validated_data.get('nome_completo_paciente'):
+            # Atualiza responsável se fornecido
+            if serializer.validated_data.get('nome_completo_responsavel'):
                 try:
-                    paciente = Paciente.objects.get(nome=serializer.validated_data['nome_completo_paciente'])
-                    user.paciente = paciente
-                except Paciente.DoesNotExist:
+                    responsavel = Responsavel.objects.get(nome=serializer.validated_data['nome_completo_responsavel'])
+                    user.responsavel = responsavel
+                except Responsavel.DoesNotExist:
                     return Response(
-                        {"message": "Não existe nenhum paciente com esse nome"},
+                        {"message": "Não existe nenhum responsável com esse nome"},
                         status=status.HTTP_400_BAD_REQUEST
                     )
             
@@ -735,7 +652,6 @@ def admin_register(request):
             nome=serializer.validated_data['nome'],
             email=serializer.validated_data['email'],
             role=Role.ADMIN,
-            paciente=None,
             cadastro_confirmado=False
         )
         admin.set_password(serializer.validated_data['senha'])
@@ -789,194 +705,188 @@ def admin_login(request):
 
 
 # ============================================================================
-# VIEWS DE PACIENTES
+# VIEWS DE RESPONSÁVEIS
 # ============================================================================
 
 @extend_schema(
-    tags=['Pacientes'],
-    summary='Criar paciente',
-    description='Cria um novo paciente no sistema (somente ADMIN)',
-    request=PatientSerializer,
-    responses={200: PatientSerializer, 400: OpenApiTypes.OBJECT, 500: OpenApiTypes.OBJECT},
+    tags=['Responsáveis'],
+    summary='Criar responsável',
+    description='Cria um novo responsável no sistema (somente ADMIN)',
+    request=GuardianSerializer,
+    responses={200: GuardianSerializer, 400: OpenApiTypes.OBJECT, 500: OpenApiTypes.OBJECT},
 )
 @api_view(['POST'])
 @permission_classes([IsAdmin])
-def patient_create(request):
+def guardian_create(request):
     """
-    POST /pacientes
-    Cria novo paciente (ADMIN apenas)
-    Migrado de: PatientController.addPatient()
+    POST /responsaveis
+    Cria novo responsável (ADMIN apenas)
     """
-    serializer = PatientSerializer(data=request.data)
+    serializer = GuardianSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    # Verifica se paciente com mesmo nome já existe
-    if Paciente.objects.filter(nome=serializer.validated_data['nome']).exists():
+    # Verifica se responsável com mesmo nome já existe
+    if Responsavel.objects.filter(nome=serializer.validated_data['nome']).exists():
         return Response(
-            {"message": "Paciente ja existe na base de dados."},
+            {"message": "Responsável ja existe na base de dados."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
     
     try:
-        paciente = serializer.save()
+        guardian = serializer.save()
         return Response(
-            PatientSerializer(paciente).data,
+            GuardianSerializer(guardian).data,
             status=status.HTTP_200_OK
         )
     except Exception as e:
         return Response(
-            {"message": "Erro ao salvar paciente."},
+            {"message": "Erro ao salvar responsável."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 
 @extend_schema(
-    tags=['Pacientes'],
-    summary='Listar pacientes',
-    description='Lista todos os pacientes cadastrados (somente ADMIN)',
-    responses={200: PatientSerializer(many=True), 204: None},
+    tags=['Responsáveis'],
+    summary='Listar responsáveis',
+    description='Lista todos os responsáveis cadastrados (somente ADMIN)',
+    responses={200: GuardianSerializer(many=True), 204: None},
 )
 @api_view(['GET'])
 @permission_classes([IsAdmin])
-def patient_list(request):
+def guardian_list(request):
     """
-    GET /pacientes
-    Lista todos os pacientes (ADMIN apenas)
-    Migrado de: PatientController.findAll()
+    GET /responsaveis
+    Lista todos os responsáveis (ADMIN apenas)
     """
-    pacientes = Paciente.objects.all()
+    responsaveis = Responsavel.objects.all()
     
-    if not pacientes.exists():
+    if not responsaveis.exists():
         return Response(status=status.HTTP_204_NO_CONTENT)
     
-    serializer = PatientSerializer(pacientes, many=True)
+    serializer = GuardianSerializer(responsaveis, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @extend_schema(
-    tags=['Pacientes'],
-    summary='Atualizar paciente',
-    description='Edita os dados de um paciente existente (somente ADMIN)',
+    tags=['Responsáveis'],
+    summary='Atualizar responsável',
+    description='Edita os dados de um responsável existente (somente ADMIN)',
     parameters=[OpenApiParameter('id', OpenApiTypes.INT, OpenApiParameter.PATH)],
-    request=PatientSerializer,
-    responses={200: PatientSerializer, 204: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 500: OpenApiTypes.OBJECT},
+    request=GuardianSerializer,
+    responses={200: GuardianSerializer, 204: OpenApiTypes.OBJECT, 400: OpenApiTypes.OBJECT, 500: OpenApiTypes.OBJECT},
 )
 @api_view(['PUT'])
 @permission_classes([IsAdmin])
-def patient_update(request, id):
+def guardian_update(request, id):
     """
-    PUT /pacientes/{id}
-    Edita paciente (ADMIN apenas)
-    Migrado de: PatientController.editPatient()
+    PUT /responsaveis/{id}
+    Edita responsaveis (ADMIN apenas)
     """
     try:
-        paciente = Paciente.objects.get(id_paciente=id)
-    except Paciente.DoesNotExist:
+        responsavel = Responsavel.objects.get(id_responsavel=id)
+    except Responsavel.DoesNotExist:
         return Response(
-            {"message": "Paciente inexistente com esse id na base de dados."},
+            {"message": "Responsável inexistente com esse id na base de dados."},
             status=status.HTTP_204_NO_CONTENT
         )
     
-    serializer = PatientSerializer(paciente, data=request.data, partial=True)
+    serializer = GuardianSerializer(responsavel, data=request.data, partial=True)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        paciente = serializer.save()
+        responsavel = serializer.save()
         return Response(
-            PatientSerializer(paciente).data,
+            GuardianSerializer(responsavel).data,
             status=status.HTTP_200_OK
         )
     except Exception as e:
         return Response(
-            {"message": "Erro ao editar paciente."},
+            {"message": "Erro ao editar responsável."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 
 @extend_schema(
-    tags=['Pacientes'],
-    summary='Deletar paciente',
-    description='Remove um paciente do sistema (somente ADMIN)',
+    tags=['Responsáveis'],
+    summary='Deletar responsável',
+    description='Remove um responsável do sistema (somente ADMIN)',
     parameters=[OpenApiParameter('id', OpenApiTypes.INT, OpenApiParameter.PATH)],
     responses={200: None, 500: OpenApiTypes.OBJECT},
 )
 @api_view(['DELETE'])
 @permission_classes([IsAdmin])
-def patient_delete(request, id):
+def guardian_delete(request, id):
     """
-    DELETE /pacientes/{id}
-    Deleta paciente (ADMIN apenas)
-    Migrado de: PatientController.deletePatient()
+    DELETE /responsaveis/{id}
+    Deleta responsável (ADMIN apenas)
     """
     try:
-        paciente = Paciente.objects.get(id_paciente=id)
-        paciente.delete()
+        responsavel = Responsavel.objects.get(id_responsavel=id)
+        responsavel.delete()
         return Response(status=status.HTTP_200_OK)
-    except Paciente.DoesNotExist:
+    except Responsavel.DoesNotExist:
         return Response(
-            {"message": "Paciente inexistente com esse id na base de dados."},
+            {"message": "Responsável inexistente com esse id na base de dados."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
     except Exception as e:
         return Response(
-            {"message": "Erro ao deletar Paciente."},
+            {"message": "Erro ao deletar Responsável."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
 
 @extend_schema(
-    tags=['Pacientes'],
-    summary='Buscar paciente por nome',
-    description='Busca um paciente pelo nome completo',
-    request=PatientRequestSerializer,
-    responses={200: PatientSerializer, 204: None},
+    tags=['Responsáveis'],
+    summary='Buscar responsável por nome',
+    description='Busca um responsável pelo nome completo',
+    request=GuardianRequestSerializer,
+    responses={200: GuardianSerializer, 204: None},
 )
 @api_view(['POST'])
 @permission_classes([AllowAny])
-def patient_search_by_name(request):
+def guardian_search_by_name(request):
     """
-    POST /pacientes/pesquisar
-    Busca paciente por nome (público)
-    Migrado de: PatientController.findPatientByName()
+    POST /responsaveis/pesquisar
+    Busca responsável por nome (público)
     """
-    serializer = PatientRequestSerializer(data=request.data)
+    serializer = GuardianRequestSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     try:
-        paciente = Paciente.objects.get(nome=serializer.validated_data['nome'])
+        responsavel = Responsavel.objects.get(nome=serializer.validated_data['nome'])
         return Response(
-            PatientSerializer(paciente).data,
+            GuardianSerializer(responsavel).data,
             status=status.HTTP_200_OK
         )
-    except Paciente.DoesNotExist:
+    except Responsavel.DoesNotExist:
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 @extend_schema(
-    tags=['Pacientes'],
-    summary='Buscar paciente por ID',
-    description='Busca um paciente pelo seu identificador',
+    tags=['Responsáveis'],
+    summary='Buscar responsável por ID',
+    description='Busca um responsável pelo seu identificador',
     parameters=[OpenApiParameter('id', OpenApiTypes.INT, OpenApiParameter.PATH)],
-    responses={200: PatientSerializer, 204: None},
+    responses={200: GuardianSerializer, 204: None},
 )
 @api_view(['GET'])
 @permission_classes([AllowAny])
-def patient_search_by_id(request, id):
+def guardian_search_by_id(request, id):
     """
-    GET /pacientes/pesquisar/{id}
-    Busca paciente por ID (público)
-    Migrado de: PatientController.findPatientById()
+    GET /responsaveis/pesquisar/{id}
+    Busca responsável por ID (público)
     """
     try:
-        paciente = Paciente.objects.get(id_paciente=id)
-    except Paciente.DoesNotExist:
+        responsavel = Responsavel.objects.get(id_responsavel=id)
+    except Responsavel.DoesNotExist:
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
     return Response(
-        PatientSerializer(paciente).data,
+        GuardianSerializer(responsavel).data,
         status=status.HTTP_200_OK
     )
 
@@ -988,7 +898,7 @@ def patient_search_by_id(request, id):
 @extend_schema(
     tags=['Agendamentos'],
     summary='Criar agendamento',
-    description='Cria um novo agendamento para um paciente (somente ADMIN)',
+    description='Cria um novo agendamento para um usuário (somente ADMIN)',
     request=AppointmentRequestSerializer,
     responses={200: AppointmentSerializer, 400: OpenApiTypes.OBJECT, 500: OpenApiTypes.OBJECT},
 )
@@ -1004,12 +914,12 @@ def appointment_create(request):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    # Busca paciente por id
+    # Busca usuário por id
     try:
-        paciente = Paciente.objects.get(id_paciente=request.data['id_paciente'])
-    except Paciente.DoesNotExist:
+        user = Usuario.objects.get(id_usuario=request.data['id_usuario'])
+    except Usuario.DoesNotExist:
         return Response(
-            {"message": "Erro ao inserir Agendamento - Paciente nao encontrado."},
+            {"message": "Erro ao inserir Agendamento - Usuário não encontrado."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
     
@@ -1032,7 +942,7 @@ def appointment_create(request):
             descricao=serializer.validated_data['descricao'],
             data=data_agendamento,
             local=serializer.validated_data['local'],
-            paciente=paciente,
+            usuario=user,
             medico=request.data['medico']
         )
         agendamento.save()
@@ -1121,12 +1031,12 @@ def appointment_update(request, id):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    # Busca paciente pelo nome
+    # Busca usuário pelo nome
     try:
-        paciente = Paciente.objects.get(nome=serializer.validated_data['nome_completo_paciente'])
-    except Paciente.DoesNotExist:
+        user = Usuario.objects.get(id_usuario=serializer.validated_data['id_usuario'])
+    except Usuario.DoesNotExist:
         return Response(
-            {"message": "Erro ao editar Agendamento - Paciente nao encontrado."},
+            {"message": "Erro ao editar Agendamento - Usuário nao encontrado."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
     
@@ -1148,7 +1058,7 @@ def appointment_update(request, id):
         agendamento.descricao = serializer.validated_data['descricao']
         agendamento.data = data_agendamento
         agendamento.local = serializer.validated_data['local']
-        agendamento.paciente = paciente
+        agendamento.user = user
         agendamento.save()
         
         return Response(
@@ -1196,7 +1106,7 @@ def appointment_delete(request, id):
 @extend_schema(
     tags=['Agendamentos'],
     summary='Listar agendamentos do usuário',
-    description='Lista os agendamentos do paciente associado ao usuário autenticado',
+    description='Lista os agendamentos do usuário associado ao usuário autenticado',
     responses={200: AppointmentSerializer(many=True), 204: None},
 )
 @api_view(['GET'])
@@ -1209,8 +1119,8 @@ def appointment_list_user(request):
     """
     user_info = request.user
     
-    # Busca agendamentos do paciente associado ao usuário
-    agendamentos = Agendamento.objects.filter(paciente__id_paciente=user_info.id_paciente)
+    # Busca agendamentos do usuário
+    agendamentos = Agendamento.objects.filter(usuario__id_usuario=user_info.id_usuario)
     
     if not agendamentos.exists():
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -1272,6 +1182,8 @@ def notification_create(request):
     if not future_dates:
         return Response(status=status.HTTP_204_NO_CONTENT)
     
+    user = Usuario.objects.get(id_usuario=serializer.validated_data['id_usuario'])
+
     # Cria notificações
     notifications = []
     for data in future_dates:
@@ -1279,14 +1191,12 @@ def notification_create(request):
             id_agendamento=serializer.validated_data['id_agendamento'],
             data=data,
             lida=False,
-            id_paciente=request.data['id_paciente'],
+            user=user,
             titulo=serializer.validated_data['titulo'],
             descricao=serializer.validated_data['descricao'],
         )
         notificacao.save()
         notifications.append(notificacao)
-
-        user = Usuario.objects.get(id_paciente=request.data['id_paciente'])
 
         send_push(user.id_usuario, "Notificação", "Novo agendamento marcado.")
     
@@ -1382,13 +1292,13 @@ def notification_list_by_appointment(request, id_agendamento):
 
 @api_view(['GET'])
 @permission_classes([IsAdminOrUser])
-def notification_list_by_patient(request, id_paciente):
+def notification_list_by_user(request, id_usuario):
     """
-    GET /notificacoes/{idPaciente}
+    GET /notificacoes/{idResponsavel}
     Lista notificações de um agendamento
     Migrado de: NotificationController.findNotification()
     """
-    notificacoes = Notificacao.objects.filter(id_paciente=id_paciente)
+    notificacoes = Notificacao.objects.filter(id_usuario=id_usuario)
     
     if not notificacoes.exists():
         return Response(status=status.HTTP_204_NO_CONTENT)

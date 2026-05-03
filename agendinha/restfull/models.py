@@ -41,12 +41,12 @@ class Usuario(models.Model):
         default=Role.USER
     )
     # ✅ Chave Estrangeira correta
-    id_paciente = models.ForeignKey(
-        'Paciente',
+    responsavel = models.ForeignKey(
+        'Responsavel',
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        db_column='id_paciente',
+        db_column='id_responsavel',
         related_name='usuarios'
     )
     foto_perfil = models.ImageField(upload_to='images/', null=True, blank=True)
@@ -98,7 +98,6 @@ class Usuario(models.Model):
         db_table = 'usuario'
         indexes = [
             models.Index(fields=['email']),
-            models.Index(fields=['id_paciente']), # ✅ Atualizado para o nome correto
         ]
 
     def set_password(self, raw_password):
@@ -130,28 +129,10 @@ class Usuario(models.Model):
                 img_temp.flush()
                 self.foto_perfil.save(os.path.basename(url), File(img_temp), save=True)
 
-
-# ============================================================================
-# PACIENTES E AGENDAMENTOS (migrado do MS Agendamentos)
-# ============================================================================
-
-class Paciente(models.Model):
-    """
-    Model de Paciente
-    Migrado de: org.codelab.graacc.Agendamentos.entity.PatientEntity
-    """
-    id_paciente = models.BigAutoField(primary_key=True) # ✅ Restaurado!
-    nome = models.CharField(max_length=255, unique=True)
-    telefone = models.CharField(max_length=20, null=True, blank=True)
-
-    class Meta:
-        db_table = 'paciente'
-        verbose_name = 'Paciente'
-        verbose_name_plural = 'Pacientes'
-
-    def __str__(self):
-        return self.nome
-
+class Responsavel(models.Model):
+    id_responsavel = models.BigAutoField(primary_key=True)
+    nome = models.CharField(max_length=255)
+    telefone = models.CharField(max_length=20, unique=True, blank=True)
 
 class Agendamento(models.Model):
     """
@@ -164,12 +145,12 @@ class Agendamento(models.Model):
     data = models.DateTimeField()
     local = models.CharField(max_length=100)
     medico = models.CharField(max_length=255, null=True, blank=True)
-    paciente = models.ForeignKey(
-        Paciente,
+    usuario = models.ForeignKey(
+        Usuario,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        db_column='id_paciente',
+        db_column='id_usuario',
         related_name='agendamentos'
     )
     lembrete_enviado = models.BooleanField(default=False)
@@ -180,7 +161,7 @@ class Agendamento(models.Model):
         verbose_name_plural = 'Agendamentos'
         indexes = [
             models.Index(fields=['data']),
-            models.Index(fields=['paciente']),
+            models.Index(fields=['usuario']),
         ]
         ordering = ['data']
 
@@ -203,7 +184,14 @@ class Notificacao(models.Model):
     lida = models.BooleanField(default=False)
     titulo = models.TextField(null=True, blank=True)
     descricao = models.TextField(null=True, blank=True)
-    id_paciente = models.BigIntegerField(null=True, blank=True)
+    usuario = models.ForeignKey(
+        Usuario,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='id_usuario',
+        related_name='agendamentos'
+    )
 
     class Meta:
         db_table = 'notificacao'
@@ -220,7 +208,7 @@ class Notificacao(models.Model):
         return f"Notificação {self.id_notificacao} - Agendamento {self.id_agendamento}"
 
 class PushSubscription(models.Model):
-    id_usuario = models.ForeignKey(
+    usuario = models.ForeignKey(
         Usuario, 
         on_delete=models.SET_NULL,
         null=True,

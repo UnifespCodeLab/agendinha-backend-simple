@@ -23,17 +23,6 @@ class UserRegisterSerializer(serializers.Serializer):
     nome_completo_paciente = serializers.CharField(max_length=255)
 
 
-class UserRegisterWithPatientIdSerializer(serializers.Serializer):
-    """
-    Serializer para registro de usuário com ID do paciente
-    Migrado de: UserRegisterWithPatientIdRequestDTO
-    """
-    nome = serializers.CharField(max_length=255)
-    email = serializers.EmailField()
-    senha = serializers.CharField(write_only=True, style={'input_type': 'password'})
-    id_paciente = serializers.IntegerField()
-
-
 class UserLoginSerializer(serializers.Serializer):
     """
     Serializer para login
@@ -87,8 +76,6 @@ class UserSerializer(serializers.ModelSerializer):
     Migrado de: UserDTO
     """
     id_usuario = serializers.IntegerField(read_only=True)
-    # 🟢 AQUI ESTÁ A MUDANÇA: Extraímos o ID do paciente através da ForeignKey
-    id_paciente = serializers.IntegerField(source='paciente_id', read_only=True)
     
     class Meta:
         model = Usuario
@@ -98,36 +85,12 @@ class UserSerializer(serializers.ModelSerializer):
             'email', 
             'cadastro_confirmado', 
             'role', 
-            'id_paciente', 
+            'id_responsavel', 
             'foto_perfil', 
             'ativar_notificacoes_consultas',
             'ativar_notificacoes_graacc'
         ]
-        read_only_fields = ['id_usuario', 'cadastro_confirmado', 'role', 'id_paciente']
-
-# ============================================================================
-# SERIALIZERS DE PACIENTES
-# ============================================================================
-
-class PatientRequestSerializer(serializers.Serializer):
-    """
-    Serializer para busca de paciente por nome
-    Migrado de: PatientRequestDTO (record)
-    """
-    nome = serializers.CharField(max_length=255)
-
-
-class PatientSerializer(serializers.ModelSerializer):
-    """
-    Serializer de paciente
-    Migrado de: PatientResponseDTO
-    """
-    id_paciente = serializers.IntegerField(read_only=True)
-    
-    class Meta:
-        model = Paciente
-        fields = ['id_paciente', 'nome', 'telefone']
-        read_only_fields = ['id_paciente']
+        read_only_fields = ['id_usuario', 'cadastro_confirmado', 'role', 'id_responsavel']
 
 
 # ============================================================================
@@ -144,7 +107,7 @@ class AppointmentRequestSerializer(serializers.Serializer):
     data = serializers.CharField()  # Formato: "dd/MM/yyyy HH:mm"
     local = serializers.CharField(max_length=100)
     medico = serializers.CharField(max_length=255, required=False, allow_blank=True)
-    id_paciente = serializers.IntegerField(read_only=True)
+    id_usuario = serializers.IntegerField(read_only=True)
 
     def validate_data(self, value):
         """
@@ -189,7 +152,7 @@ class AppointmentInfoSerializer(serializers.Serializer):
     """
     id_agendamento = serializers.IntegerField()
     data_agendamento = serializers.CharField()  # Formato: "dd/MM/yyyy HH:mm"
-    id_paciente = serializers.IntegerField(source='paciente.id_paciente', read_only=True)
+    id_usuario = serializers.IntegerField(source='usuario.id_usuario', read_only=True)
     descricao = serializers.CharField(max_length=100)
     titulo = serializers.CharField(max_length=100)
 
@@ -222,3 +185,10 @@ class NotificationSerializer(serializers.ModelSerializer):
     def get_data(self, obj):
         """Formata data no formato dd/MM/yyyy HH:mm"""
         return obj.data.strftime('%d/%m/%Y %H:%M')
+
+class GuardianSerializer(serializers.ModelSerializer):
+    id_responsavel = serializers.IntegerField(read_only=True)
+    nome = serializers.CharField(max_length=255)
+
+class GuardianRequestSerializer(serializers.ModelSerializer):
+    nome = serializers.CharField(max_length=255)
