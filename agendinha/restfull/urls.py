@@ -25,7 +25,6 @@ urlpatterns = [
     # AUTENTICAÇÃO - USUÁRIOS
     # ========================================================================
     path('usuarios/registrar', views.user_register, name='user-register'),
-    path('usuarios/pacienteid/registrar', views.user_register_with_patient_id, name='user-register-patient-id'),
     path('usuarios/login', views.user_login, name='user-login'),
     path('usuarios/login/google', views.user_login_google, name='user-login-google'),
     path('usuarios/confirmar', views.user_confirm, name='user-confirm'),
@@ -43,13 +42,13 @@ urlpatterns = [
     path('admin/login', views.admin_login, name='admin-login'),
     
     # ========================================================================
-    # PACIENTES
+    # RESPONSÁVEIS
     # ========================================================================
-    path('pacientes', views.patient_list, name='patient-list'),  # GET (ADMIN)
-    path('pacientes/pesquisar', views.patient_search_by_name, name='patient-search-name'),  # POST
-    path('pacientes/pesquisar/<int:id>', views.patient_search_by_id, name='patient-search-id'),  # GET
-    path('pacientes/<int:id>', views.patient_update, name='patient-update'),  # PUT
-    # Nota: POST para criar paciente será tratado na mesma URL /pacientes
+    path('responsaveis', views.guardian_list, name='guardian-list'),  # GET (ADMIN)
+    path('responsaveis/pesquisar', views.guardian_search_by_name, name='guardian-search-name'),  # POST
+    path('responsaveis/pesquisar/<int:id>', views.guardian_search_by_id, name='guardian-search-id'),  # GET
+    path('responsaveis/<int:id>', views.guardian_update, name='guardian-update'),  # PUT
+    # Nota: POST para criar responsável será tratado na mesma URL /responsaveos
     
     # ========================================================================
     # AGENDAMENTOS
@@ -66,7 +65,7 @@ urlpatterns = [
     path('notificacoes', views.notification_create, name='notification-create'),  # POST
     path('notificacoes/conjunto', views.notification_create_batch, name='notification-create-batch'),  # POST
     path('notificacoes/<int:id_agendamento>', views.notification_list_by_appointment, name='notification-list'),  # GET
-    path('notificacoes/paciente/<int:id_paciente>', views.notification_list_by_patient, name='notification-list-by-patient'),  # GET
+    path('notificacoes/usuario/<int:id_usuario>', views.notification_list_by_user, name='notification-list-by-user'),  # GET
     path('notificacoes/id/<int:id_notificacao>', views.notification_delete_by_id, name='notification-delete-by-id'),  # GET
     path('notificacoes/naoLidas', views.notification_list_unread, name='notification-list-unread'),  # POST
     path('notificacoes/<int:id_notificacao>/lida', views.notification_mark_as_read, name='notification-mark-read'),  # POST
@@ -84,9 +83,9 @@ urlpatterns += [
     path('usuarios/update', views.user_update, name='user-update'),  # PUT
     path('usuarios/delete', views.user_delete, name='user-delete'),  # DELETE
     
-    # Paciente: POST em /pacientes, DELETE em /pacientes/{id}
-    path('pacientes/create', views.patient_create, name='patient-create'),  # POST
-    path('pacientes/<int:id>/delete', views.patient_delete, name='patient-delete'),  # DELETE
+    # Responsáveis: POST em /responsaveis, DELETE em /responsaveis/{id}
+    path('responsaveis/create', views.guardian_create, name='guardian-create'),  # POST
+    path('responsaveis/<int:id>/delete', views.guardian_delete, name='guardian-delete'),  # DELETE
     
     # Agendamento: POST, PUT, DELETE
     path('agendamentos/create', views.appointment_create, name='appointment-create'),  # POST
