@@ -15,7 +15,6 @@ class UserRegisterSerializer(serializers.Serializer):
     nome = serializers.CharField(max_length=255)
     email = serializers.EmailField()
     senha = serializers.CharField(write_only=True, style={'input_type': 'password'})
-    nome_completo_paciente = serializers.CharField(max_length=255)
 
 
 class UserLoginSerializer(serializers.Serializer):
@@ -80,12 +79,12 @@ class UserSerializer(serializers.ModelSerializer):
             'email', 
             'cadastro_confirmado', 
             'role', 
-            'id_responsavel', 
+            'responsavel', 
             'foto_perfil', 
             'ativar_notificacoes_consultas',
-            'ativar_notificacoes_graacc'
+            'ativar_notificacoes_agendinha'
         ]
-        read_only_fields = ['id_usuario', 'cadastro_confirmado', 'role', 'id_responsavel']
+        read_only_fields = ['id_usuario', 'cadastro_confirmado', 'role', 'responsavel']
 
 
 # ============================================================================

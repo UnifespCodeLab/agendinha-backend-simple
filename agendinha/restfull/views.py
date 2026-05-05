@@ -1,7 +1,3 @@
-"""
-Views para GRAACC API Unificada
-Migradas dos Controllers dos microserviços Java Spring Boot
-"""
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from googleapiclient.discovery import build
@@ -71,7 +67,7 @@ def generate_custom_jwt(user):
         'iat': datetime.utcnow(),
         'exp': datetime.utcnow() + timedelta(hours=24)
     }
-    
+
     token = jwt.encode(payload, settings.SECURITY_TOKEN, algorithm='HS256')
     return token
 
@@ -132,7 +128,7 @@ def user_register(request):
         )
         user.set_password(serializer.validated_data['senha'])
         user.save()
-        
+        user_register_email_confirm(user) 
         return Response(status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -168,33 +164,33 @@ def user_login(request):
     serializer = UserLoginSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
     try:
         user = Usuario.objects.get(email=serializer.validated_data['email'])   
     except Usuario.DoesNotExist:
         return Response(status=status.HTTP_400_BAD_REQUEST)
-    
+
     # Verifica senha
     if not user.check_password(serializer.validated_data['senha']):
         return Response(status=status.HTTP_400_BAD_REQUEST)
-    
+
     if user.modo_google:
         return Response(status=status.HTTP_401_UNAUTHORIZED)
 
     user_serializer = UserSerializer(user)
 
-    notifications_obj = Notificacao.objects.filter(usuario=user_serializer.data)
+    notifications_obj = Notificacao.objects.filter(usuario=user.id_usuario)
     notifications_data = NotificationSerializer(notifications_obj, many=True).data
 
     # Gera token JWT customizado
     token = generate_custom_jwt(user)
-    
+
     response_data = {
-        'usuario': user_serializer,
+        'usuario': user_serializer.data,
         'notificacoes': notifications_data,
         'token': token
     }
-    
+
     return Response(response_data, status=status.HTTP_200_OK)
 
 @api_view(['POST'])
@@ -441,10 +437,13 @@ def user_get(request):
     user = Usuario.objects.get(id_usuario=user_info.id_usuario)
     serializer = UserSerializer(user)
 
-    notificacoes = Notificacao.objects.filter(id_usuario=serializer.data['id_usuario'])
-    serializer['notificacoes'] = NotificationSerializer(notificacoes, many=True).data
+    notificacoes = Notificacao.objects.filter(usuario=serializer.data['id_usuario'])
+    todas_notificacoes = NotificationSerializer(notificacoes, many=True).data
 
-    return Response(serializer, status=status.HTTP_200_OK)
+    return Response({
+        'usuario': serializer.data,
+        'notificacoes': todas_notificacoes
+    }, status=status.HTTP_200_OK)
 
 
 @extend_schema(
@@ -1294,11 +1293,11 @@ def notification_list_by_appointment(request, id_agendamento):
 @permission_classes([IsAdminOrUser])
 def notification_list_by_user(request, id_usuario):
     """
-    GET /notificacoes/{idResponsavel}
+    GET /notificacoes/{idUsuario}
     Lista notificações de um agendamento
     Migrado de: NotificationController.findNotification()
     """
-    notificacoes = Notificacao.objects.filter(id_usuario=id_usuario)
+    notificacoes = Notificacao.objects.filter(usuario=id_usuario)
     
     if not notificacoes.exists():
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -1429,4 +1428,4 @@ def hello_world(request):
     GET /hello
     Endpoint de teste
     """
-    return Response("Hello World from GRAACC API Unificada", status=status.HTTP_200_OK)
+    return Response("Hello World from Agendinha API Unificada", status=status.HTTP_200_OK)
