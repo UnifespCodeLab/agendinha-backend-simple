@@ -13,9 +13,9 @@ class ResponsavelAdmin(admin.ModelAdmin):
 
 @admin.register(Agendamento)
 class AgendamentoAdmin(admin.ModelAdmin):
-    list_display = ('titulo', 'paciente', 'data', 'medico', 'lembrete_enviado')
+    list_display = ('titulo', 'usuario', 'data', 'medico', 'lembrete_enviado')
     list_filter = ('data', 'lembrete_enviado')
-    search_fields = ('titulo', 'paciente__nome', 'medico')
+    search_fields = ('titulo', 'medico')
 
 @admin.register(Notificacao)
 class NotificacaoAdmin(admin.ModelAdmin):
