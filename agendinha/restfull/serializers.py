@@ -1,10 +1,5 @@
-"""
-Serializers para GRAACC API Unificada
-Migrados dos DTOs dos microserviços Java Spring Boot
-"""
-
 from rest_framework import serializers
-from .models import Usuario, Paciente, Agendamento, Notificacao
+from .models import Usuario, Responsavel, Agendamento, Notificacao
 from datetime import datetime
 
 

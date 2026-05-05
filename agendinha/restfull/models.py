@@ -190,7 +190,7 @@ class Notificacao(models.Model):
         null=True,
         blank=True,
         db_column='id_usuario',
-        related_name='agendamentos'
+        related_name='notificacoes'
     )
 
     class Meta:
