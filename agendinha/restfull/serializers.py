@@ -170,10 +170,10 @@ class NotificationSerializer(serializers.ModelSerializer):
     """
     id_notificacao = serializers.IntegerField(read_only=True)
     data = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = Notificacao
-        fields = ['id_notificacao', 'data', 'lida', 'id_agendamento', 'id_paciente', 'titulo', 'descricao']
+        fields = ['id_notificacao', 'data', 'lida', 'id_agendamento', 'usuario', 'titulo', 'descricao']
         read_only_fields = ['id_notificacao']
 
     def get_data(self, obj):
@@ -184,5 +184,10 @@ class GuardianSerializer(serializers.ModelSerializer):
     id_responsavel = serializers.IntegerField(read_only=True)
     nome = serializers.CharField(max_length=255)
 
-class GuardianRequestSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Responsavel
+        fields = ['id_responsavel', 'nome']
+        read_only_fields = ['id_responsavel']
+
+class GuardianRequestSerializer(serializers.Serializer):
     nome = serializers.CharField(max_length=255)

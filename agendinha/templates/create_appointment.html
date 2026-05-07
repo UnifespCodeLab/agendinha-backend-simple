@@ -15,8 +15,8 @@
         <input type="text" id="local" name="local"><br>
         <label for="physician">Médico: </label>
         <input type="text" id="physician" name="physician"><br>
-        <label for="patient">ID Paciente: </label>
-        <input type="number" id="patient" name="patient"><br>
+        <label for="user">ID Usuário: </label>
+        <input type="number" id="user" name="user"><br>
         <button onclick="create()">Criar Agendamento</button>
         <script>
             async function create() {
@@ -31,7 +31,7 @@
                 const data = document.getElementById("date").value;
                 const local = document.getElementById("local").value;
                 const medico = document.getElementById("physician").value;
-                const id_paciente = document.getElementById("patient").value;
+                const id_usuario = document.getElementById("user").value;
                 const csrftoken = document.getElementsByName("csrfmiddlewaretoken")[0].value;
                 const response = await fetch("/graacc/api/agendamentos/create", 
                 {
@@ -42,7 +42,7 @@
                         "Authorization": `Bearer ${adminData['token']}`
                     },
                     body: JSON.stringify({
-                        titulo, descricao, data, local, medico, id_paciente: Number(id_paciente)
+                        titulo, descricao, data, local, medico, id_usuario: Number(id_usuario)
                     })
                 });
             }
