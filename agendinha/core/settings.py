@@ -1,5 +1,5 @@
 """
-Django settings for core project - GRAACC API Unificada
+Django settings for core project
 
 Migrado de microserviços Java Spring Boot para Django
 """
@@ -178,7 +178,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ============================================================================
-# CONFIGURAÇÕES ESPECÍFICAS DA MIGRAÇÃO DOS MICROSERVIÇOS GRAACC
+# CONFIGURAÇÕES ESPECÍFICAS DA MIGRAÇÃO DOS MICROSERVIÇOS
 # ============================================================================
 
 # REST Framework Configuration
@@ -222,8 +222,8 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG  # Apenas em desenvolvimento
 
 # Spectacular (Swagger/OpenAPI) Configuration
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'GRAACC API Unificada',
-    'DESCRIPTION': 'API unificada para gerenciamento de agendamentos GRAACC - Migrado de microserviços Java Spring Boot',
+    'TITLE': 'Agendinha API Unificada',
+    'DESCRIPTION': 'API unificada para gerenciamento de agendamentos - Migrado de microserviços Java Spring Boot',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
