@@ -3,14 +3,24 @@
 <html>
     <title>Inserir agendamento</title>
     <script src="{% static 'js/admin.js' %}"></script>
+    <style>
+        * {
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+        }
+    </style>
     <body>
         {% csrf_token %}
+        <h1>Cadastro de Agendamento</h1>
         <label for="title">Título: </label>
         <input type="text" id="title" name="title"><br>
         <label for="description">Descrição: </label>
         <input type="text" id="description" name="description"><br>
         <label for="date">Data: </label>
         <input type="text" id="date" name="date"><br>
+        <label for="hour">Hora: </label>
+        <input type="text" id="hour" name="hour">
+        <label for="minute">Minuto: </label>
+        <input type="text" id="minute" name="minute"><br>     
         <label for="local">Local: </label>
         <input type="text" id="local" name="local"><br>
         <label for="physician">Médico: </label>
@@ -28,12 +38,15 @@
                 
                 const titulo = document.getElementById("title").value;
                 const descricao = document.getElementById("description").value;
-                const data = document.getElementById("date").value;
+                const date = document.getElementById("date").value;
+                const hour = document.getElementById("hour").value;
+                const minute = document.getElementById("minute").value;
                 const local = document.getElementById("local").value;
                 const medico = document.getElementById("physician").value;
                 const id_usuario = document.getElementById("user").value;
                 const csrftoken = document.getElementsByName("csrfmiddlewaretoken")[0].value;
-                const response = await fetch("/graacc/api/agendamentos/create", 
+                const data = date + " " + hour + ":" + minute;
+                const response = await fetch("/agendinha/api/agendamentos/create", 
                 {
                     method: "POST",
                     headers: {

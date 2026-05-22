@@ -20,8 +20,8 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    # GRAACC API - Compatível com estrutura dos microserviços
-    path('graacc/api/', include('restfull.urls')),
+    # API - Compatível com estrutura dos microserviços
+    path('agendinha/api/', include('restfull.urls')),
     
     # ========================================================================
     # DOCUMENTAÇÃO SWAGGER/OPENAPI
