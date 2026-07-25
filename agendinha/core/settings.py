@@ -34,7 +34,7 @@ GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 GOOGLE_TOKEN_URI = os.getenv('GOOGLE_TOKEN_URI')
 FRONTEND_URL = os.getenv('FRONTEND_URL', "http://localhost:3000")
-SECRET_KEY = "graacc"
+SECRET_KEY = "agendinha"
 
 # SMTP Server
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -127,9 +127,9 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DATABASE_NAME', 'graacc_db'),
-        'USER': os.getenv('DATABASE_USER', 'graacc_user'),
-        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'graacc_password'),
+        'NAME': os.getenv('DATABASE_NAME', 'agendinha_db'),
+        'USER': os.getenv('DATABASE_USER', 'agendinha_user'),
+        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'password'),
         'HOST': os.getenv('DATABASE_HOST', 'localhost'),
         'PORT': os.getenv('DATABASE_PORT', '5432'),
     }
@@ -245,7 +245,7 @@ SPECTACULAR_SETTINGS = {
 
 # Security Token para JWT (mesmo token dos microserviços Java)
 SECURITY_TOKEN = os.getenv('SECURITY_TOKEN', SECRET_KEY)
-SECURITY_EMISSOR = os.getenv('SECURITY_EMISSOR', 'graacc-api-django')
+SECURITY_EMISSOR = os.getenv('SECURITY_EMISSOR', 'agendinha-api-django')
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
