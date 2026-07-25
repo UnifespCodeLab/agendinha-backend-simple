@@ -27,7 +27,7 @@
                 const data_agendamento = document.getElementById("date").value;
                 const id_agendamento = document.getElementById("appointment").value;
                 const csrftoken = document.getElementsByName("csrfmiddlewaretoken")[0].value;
-                const response = await fetch("/graacc/api/notificacoes", 
+                const response = await fetch("/agendinha/api/notificacoes", 
                 {
                     method: "POST",
                     headers: {

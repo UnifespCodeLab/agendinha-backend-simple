@@ -1,5 +1,5 @@
 """
-Testes Unitários para GRAACC API Unificada
+Testes Unitários para API Unificada
 Cobertura completa de models, serializers e views
 """
 
@@ -129,13 +129,13 @@ class AgendamentoModelTest(TestCase):
             titulo="Consulta",
             descricao="Consulta de rotina",
             data=data_agendamento,
-            local="Hospital GRAACC",
+            local="Hospital",
             paciente=self.paciente
         )
         
         self.assertEqual(agendamento.titulo, "Consulta")
         self.assertEqual(agendamento.descricao, "Consulta de rotina")
-        self.assertEqual(agendamento.local, "Hospital GRAACC")
+        self.assertEqual(agendamento.local, "Hospital")
         self.assertEqual(agendamento.paciente, self.paciente)
         
     def test_agendamento_str_method(self):

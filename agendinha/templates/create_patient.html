@@ -21,7 +21,7 @@
                 const nome = document.getElementById("name").value;
                 const telefone = document.getElementById("phone").value;
                 const csrftoken = document.getElementsByName("csrfmiddlewaretoken")[0].value;
-                const response = await fetch("/graacc/api/pacientes/create", 
+                const response = await fetch("/agendinha/api/pacientes/create", 
                 {
                     method: "POST",
                     headers: {
