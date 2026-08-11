@@ -1,5 +1,5 @@
 """
-Django settings for core project - GRAACC API Unificada
+Django settings for core project
 
 Migrado de microserviços Java Spring Boot para Django
 """
@@ -34,7 +34,7 @@ GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 GOOGLE_TOKEN_URI = os.getenv('GOOGLE_TOKEN_URI')
 FRONTEND_URL = os.getenv('FRONTEND_URL', "http://localhost:3000")
-SECRET_KEY = "graacc"
+SECRET_KEY = "agendinha"
 
 # SMTP Server
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -127,9 +127,9 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DATABASE_NAME', 'graacc_db'),
-        'USER': os.getenv('DATABASE_USER', 'graacc_user'),
-        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'graacc_password'),
+        'NAME': os.getenv('DATABASE_NAME', 'agendinha_db'),
+        'USER': os.getenv('DATABASE_USER', 'agendinha_user'),
+        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'password'),
         'HOST': os.getenv('DATABASE_HOST', 'localhost'),
         'PORT': os.getenv('DATABASE_PORT', '5432'),
     }
@@ -178,7 +178,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ============================================================================
-# CONFIGURAÇÕES ESPECÍFICAS DA MIGRAÇÃO DOS MICROSERVIÇOS GRAACC
+# CONFIGURAÇÕES ESPECÍFICAS DA MIGRAÇÃO DOS MICROSERVIÇOS
 # ============================================================================
 
 # REST Framework Configuration
@@ -222,8 +222,8 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG  # Apenas em desenvolvimento
 
 # Spectacular (Swagger/OpenAPI) Configuration
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'GRAACC API Unificada',
-    'DESCRIPTION': 'API unificada para gerenciamento de agendamentos GRAACC - Migrado de microserviços Java Spring Boot',
+    'TITLE': 'Agendinha API Unificada',
+    'DESCRIPTION': 'API unificada para gerenciamento de agendamentos - Migrado de microserviços Java Spring Boot',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
@@ -245,7 +245,7 @@ SPECTACULAR_SETTINGS = {
 
 # Security Token para JWT (mesmo token dos microserviços Java)
 SECURITY_TOKEN = os.getenv('SECURITY_TOKEN', SECRET_KEY)
-SECURITY_EMISSOR = os.getenv('SECURITY_EMISSOR', 'graacc-api-django')
+SECURITY_EMISSOR = os.getenv('SECURITY_EMISSOR', 'agendinha-api-django')
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),

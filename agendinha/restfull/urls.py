@@ -1,5 +1,5 @@
 """
-URLs para GRAACC API Unificada
+URLs para API Unificada
 Compatível com estrutura dos microserviços Java
 """
 

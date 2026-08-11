@@ -10,10 +10,6 @@ from django.core.files.temp import NamedTemporaryFile
 import os
 from django.core.files import File
 
-# ============================================================================
-# USUÁRIOS (migrado do MS Usuários)
-# ============================================================================
-
 class Role(models.TextChoices):
     """Enum para roles de usuário (compatível com Java)"""
     USER = 'ROLE_USER', 'User'
@@ -453,7 +449,6 @@ class ObjetivoFisioterapeutico(models.Model):
 class Usuario(models.Model):
     """
     Model de Usuário
-    Migrado de: org.codelab.graacc.Usuarios.entity.UserEntity
     """
     id_usuario = models.BigAutoField(primary_key=True)
     email = models.EmailField(unique=True)
@@ -552,6 +547,24 @@ class Usuario(models.Model):
                 img_temp.flush()
                 self.foto_perfil.save(os.path.basename(url), File(img_temp), save=True)
 
+class Paciente(models.Model):
+    queixa_principal = models.CharField(max_length=255, blank=True)
+    endereco = models.CharField(max_length=255, blank=True)
+    bairro = models.CharField(max_length=255, blank=True)
+    cep = models.CharField(max_length=255, blank=True)
+    nome = models.CharField(max_length=255)
+    responsavel = models.ForeignKey(
+        'Responsavel',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='id_responsavel',
+        related_name='usuarios'
+    )
+    rg = models.CharField(max_length=10, blank=True)
+    cpf = models.CharField(max_length=11, blank=True)
+    telefone = models.CharField(max_length=11, blank=True)
+
 class Responsavel(models.Model):
     id_responsavel = models.BigAutoField(primary_key=True)
     nome = models.CharField(max_length=255)
@@ -560,7 +573,6 @@ class Responsavel(models.Model):
 class Agendamento(models.Model):
     """
     Model de Agendamento
-    Migrado de: org.codelab.graacc.Agendamentos.entity.AppointmentEntity
     """
     id_agendamento = models.BigAutoField(primary_key=True)
     titulo = models.CharField(max_length=100)
@@ -591,15 +603,9 @@ class Agendamento(models.Model):
     def __str__(self):
         return f"{self.titulo} - {self.data.strftime('%d/%m/%Y %H:%M')}"
 
-
-# ============================================================================
-# NOTIFICAÇÕES (migrado do MS Notificações)
-# ============================================================================
-
 class Notificacao(models.Model):
     """
     Model de Notificação
-    Migrado de: org.codelab.graacc.Notificacoes.entity.NotificationEntity
     """
     id_notificacao = models.BigAutoField(primary_key=True)
     id_agendamento = models.BigIntegerField()
