@@ -33,6 +33,7 @@ urlpatterns = [
     path('usuarios/redefinir-senha-sl', views.user_password_update_without_auth, name='user-password-update-without-auth'),
     path('usuarios/redefinir-senha', views.user_password_update, name='user-password-update'),
     path('usuarios', views.user_get, name='user-get'),  # GET
+    path('usuarios/pesquisar', views.user_search_by_name, name='user-search-name'),  # GET
     # Nota: PUT e DELETE para /usuarios serão tratados na mesma view com método HTTP
     
     # ========================================================================

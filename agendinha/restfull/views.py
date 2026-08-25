@@ -448,6 +448,29 @@ def user_get(request):
 
 @extend_schema(
     tags=['Autenticação - Usuários'],
+    summary='Pesquisar usuário por nome',
+    description='Busca usuários pelo nome (apenas ADMIN)',
+    parameters=[OpenApiParameter('nome', OpenApiTypes.STR, OpenApiParameter.QUERY)],
+    responses={200: UserSerializer(many=True)},
+)
+@api_view(['GET'])
+@permission_classes([IsAdmin])
+def user_search_by_name(request):
+    """
+    GET /usuarios/pesquisar?nome=...
+    Pesquisa pacientes por nome
+    """
+    nome = request.GET.get('nome', '')
+    if not nome:
+        return Response([], status=status.HTTP_200_OK)
+        
+    usuarios = Usuario.objects.filter(role=Role.USER, nome__icontains=nome)[:50]
+    serializer = UserSerializer(usuarios, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@extend_schema(
+    tags=['Autenticação - Usuários'],
     summary='Atualizar dados do usuário',
     description='Atualiza nome, email ou responsável associado do usuário autenticado',
     request=UserUpdateSerializer,
@@ -1030,9 +1053,9 @@ def appointment_update(request, id):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    # Busca usuário pelo nome
+    # Busca usuário pelo ID
     try:
-        user = Usuario.objects.get(id_usuario=serializer.validated_data['id_usuario'])
+        user = Usuario.objects.get(id_usuario=request.data['id_usuario'])
     except Usuario.DoesNotExist:
         return Response(
             {"message": "Erro ao editar Agendamento - Usuário nao encontrado."},
