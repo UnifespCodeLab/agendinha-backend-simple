@@ -123,12 +123,13 @@ class AppointmentSerializer(serializers.ModelSerializer):
     """
     id_agendamento = serializers.IntegerField(read_only=True)
     data = serializers.SerializerMethodField()
-    id_paciente = serializers.IntegerField(source='paciente.id_paciente', read_only=True)
+    id_paciente = serializers.IntegerField(source='usuario.id_usuario', read_only=True)
+    nome_paciente = serializers.CharField(source='usuario.nome', read_only=True)
     
     class Meta:
         model = Agendamento
-        fields = ['id_agendamento', 'titulo', 'descricao', 'data', 'local', 'medico', 'id_paciente', 'lembrete_enviado']
-        read_only_fields = ['id_agendamento', 'id_paciente', 'lembrete_enviado']
+        fields = ['id_agendamento', 'titulo', 'descricao', 'data', 'local', 'medico', 'id_paciente', 'nome_paciente', 'lembrete_enviado']
+        read_only_fields = ['id_agendamento', 'id_paciente', 'nome_paciente', 'lembrete_enviado']
 
     def get_data(self, obj):
         """Formata data no formato dd/MM/yyyy HH:mm"""
