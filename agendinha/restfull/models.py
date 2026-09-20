@@ -15,15 +15,28 @@ class Role(models.TextChoices):
     USER = 'ROLE_USER', 'User'
     ADMIN = 'ROLE_ADMIN', 'Admin'
 
+class Responsavel(models.Model):
+    id_responsavel = models.BigAutoField(primary_key=True)
+    nome = models.CharField(max_length=255)
+    telefone = models.CharField(max_length=20, unique=True, blank=True)
 
 class Usuario(models.Model):
     """
     Model de Usuário
     """
-    id_usuario = models.BigAutoField(primary_key=True) # ✅ Restaurado!
+    id_usuario = models.BigAutoField(primary_key=True)
+    nome = models.CharField(max_length=255, blank=True)
     email = models.EmailField(unique=True)
     senha = models.CharField(max_length=255, blank=True)
     cadastro_confirmado = models.BooleanField(default=False)
+    responsavel = models.ForeignKey(
+        Responsavel,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='usuarios',
+        db_column='id_responsavel',
+    )
     role = models.CharField(
         max_length=50,
         choices=Role.choices,
@@ -33,7 +46,6 @@ class Usuario(models.Model):
     modo_google = models.BooleanField(default=False, null=False)
     timeout_seconds = models.BigIntegerField(blank=True, default=10000)
     ativar_notificacoes_consultas = models.BooleanField(default=True, null=False)
-    ativar_notificacoes_agendinha = models.BooleanField(default=True, null=False)
     def make_token(self) -> str:
         timestamp = int(time.time())
         hash_value = self._make_hash(timestamp)
@@ -107,29 +119,6 @@ class Usuario(models.Model):
                 img_temp.write(response.content)
                 img_temp.flush()
                 self.foto_perfil.save(os.path.basename(url), File(img_temp), save=True)
-
-class Paciente(models.Model):
-    queixa_principal = models.CharField(max_length=255, blank=True)
-    endereco = models.CharField(max_length=255, blank=True)
-    bairro = models.CharField(max_length=255, blank=True)
-    cep = models.CharField(max_length=255, blank=True)
-    nome = models.CharField(max_length=255)
-    responsavel = models.ForeignKey(
-        'Responsavel',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        db_column='id_responsavel',
-        related_name='usuarios'
-    )
-    rg = models.CharField(max_length=10, blank=True)
-    cpf = models.CharField(max_length=11, blank=True)
-    telefone = models.CharField(max_length=11, blank=True)
-
-class Responsavel(models.Model):
-    id_responsavel = models.BigAutoField(primary_key=True)
-    nome = models.CharField(max_length=255)
-    telefone = models.CharField(max_length=20, unique=True, blank=True)
 
 class Agendamento(models.Model):
     """
