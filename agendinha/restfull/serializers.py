@@ -82,7 +82,6 @@ class UserSerializer(serializers.ModelSerializer):
             'responsavel', 
             'foto_perfil', 
             'ativar_notificacoes_consultas',
-            'ativar_notificacoes_agendinha'
         ]
         read_only_fields = ['id_usuario', 'cadastro_confirmado', 'role', 'responsavel']
 
