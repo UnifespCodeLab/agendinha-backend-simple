@@ -47,6 +47,7 @@ urlpatterns = [
     # AUTENTICAÇÃO - ADMIN
     # ========================================================================
     path('admin/registrar', admin_views.admin_register, name='admin-register'),
+    path('admin/usuarios/registrar', admin_views.user_register, name='admin-user-register'),
     path('admin/login', admin_views.admin_login, name='admin-login'),
 
     # ========================================================================

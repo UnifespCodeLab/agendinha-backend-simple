@@ -1,7 +1,8 @@
 from ..models import Usuario, Role
 from .utils import generate_custom_jwt
 from ..serializers import (
-    AdminRegisterSerializer, UserLoginSerializer, UserLoginResponseSerializer
+    AdminRegisterSerializer, UserLoginSerializer, UserLoginResponseSerializer,
+    AdminUserRegisterSerializer
 )
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.types import OpenApiTypes
@@ -9,6 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
+from ..permissions import IsAdmin
 
 # ============================================================================
 # VIEWS DE AUTENTICAÇÃO - ADMIN
@@ -100,3 +102,38 @@ def admin_login(request):
     }
     
     return Response(response_data, status=status.HTTP_200_OK)
+
+@extend_schema(
+    tags=['Gerenciamento - Admin'],
+    summary='Criar usuário',
+    description='Realiza a criação de usuário',
+    request=AdminUserRegisterSerializer,
+)
+@api_view(['POST'])
+@permission_classes([IsAdmin])
+def user_register(request):
+    """
+    POST /usuarios/registrar
+    Registra usuário comum
+    Migrado de: UserController.addUser()
+    """
+    # Verifica se email já existe
+    if Usuario.objects.filter(cpf=request.data['cpf']).exists():
+        return Response(
+            {"message": "CPF já foi cadastrado"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    
+    # Cria usuário
+    try:
+        user = Usuario(
+            cpf=request.data['cpf'],
+            nome=request.data['nome']
+        )
+        user.save()
+        return Response(status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"message": "Erro ao cadastrar usuario."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
