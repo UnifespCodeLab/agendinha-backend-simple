@@ -50,6 +50,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
         ),
     ]
 )
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def user_register(request):
@@ -65,7 +66,7 @@ def user_register(request):
     assert isinstance(serializer.validated_data, dict)
     
     # Verifica se email já existe
-    if Usuario.objects.filter(email=serializer.validated_data['email']).exists():
+    if Usuario.objects.filter(email=serializer.validated_data['cpf']).exists():
         return Response(
             {"message": "Email já cadastrado"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -73,14 +74,9 @@ def user_register(request):
     
     # Cria usuário
     try:
-        user = Usuario(
-            nome=serializer.validated_data['nome'],
-            email=serializer.validated_data['email'],
-            role=Role.USER,
-            cadastro_confirmado=False
-        )
-        user.set_password(serializer.validated_data['senha'])
-        user.save()
+        user = Usuario.objects.get(cpf=serializer.validated_data['cpf'])
+        user.email = request.data['email']
+        user.set_password(request.data['senha'])
         user_register_email_confirm(user) 
         return Response(status=status.HTTP_200_OK)
     except Exception as e:
