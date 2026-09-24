@@ -16,10 +16,6 @@ class UserRegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     senha = serializers.CharField(write_only=True, style={'input_type': 'password'})
 
-class AdminUserRegisterSerializer(serializers.Serializer):
-    cpf = serializers.CharField(max_length=14)
-    nome = serializers.CharField(max_length=255)
-
 class UserLoginSerializer(serializers.Serializer):
     """
     Serializer para login
@@ -57,6 +53,14 @@ class UserUpdatePasswordSerializer(serializers.Serializer):
     senha_atual = serializers.CharField(write_only=True, style={'input_type': 'password'})
     senha_nova = serializers.CharField(write_only=True, style={'input_type': 'password'})
 
+class UserUpdatePasswordWithoutAuthSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    senha_nova = serializers.CharField(write_only=True, style={'input_type': 'password'})
+
+class AdminUserRegisterSerializer(serializers.Serializer):
+    cpf = serializers.CharField(max_length=14)
+    nome = serializers.CharField(max_length=255)
+
 class AdminRegisterSerializer(serializers.Serializer):
     """
     Serializer para registro de admin
@@ -65,7 +69,6 @@ class AdminRegisterSerializer(serializers.Serializer):
     nome = serializers.CharField(max_length=255)
     email = serializers.EmailField()
     senha = serializers.CharField(write_only=True, style={'input_type': 'password'})
-
 
 class UserSerializer(serializers.ModelSerializer):
     """
