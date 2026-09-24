@@ -9,7 +9,7 @@ from ..serializers import (
     NotificationSerializer,
     UserRegisterSerializer,
     UserLoginSerializer, UserLoginResponseSerializer, UserUpdateSerializer,
-    UserSerializer,
+    UserSerializer, UserUpdatePasswordWithoutAuthSerializer,
     UserUpdatePasswordSerializer, UserGoogleLoginSerializer,
     UserRequestNewPasswordSerializer
 )
@@ -456,18 +456,30 @@ def user_password_update(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+@extend_schema(
+    tags=['Autenticação - Usuários'],
+    summary='Atualizar senha do usuário (sem autenticação)',
+    description='Atualiza senha do usuário não autenticado.',
+    request=UserUpdatePasswordWithoutAuthSerializer,
+    responses={200: None, 400: OpenApiTypes.OBJECT, 500: OpenApiTypes.OBJECT},
+)
 @api_view(['PUT'])
 @permission_classes([AllowAny])
 def user_password_update_without_auth(request):
-    id = request.data['id']
+    serializer = UserUpdatePasswordWithoutAuthSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    assert isinstance(serializer.validated_data, dict)
+
     try:
-        user = Usuario.objects.get(id_usuario=id)
+        user = Usuario.objects.get(id_usuario=serializer.validated_data['id'])
         if not user:
             return Response(
                 {"message": "Usuário não encontrado."},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-        user.set_password(request.data['senha_nova'])
+        user.set_password(serializer.validated_data['senha_nova'])
         user.save()
         return Response(status=status.HTTP_200_OK)
     except Exception as e:
