@@ -1,7 +1,7 @@
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from ..permissions import IsAdminOrUser
-from ..serializers import AppointmentRequestSerializer, AppointmentSerializer
+from ..serializers.appointment import AppointmentRequestSerializer, AppointmentSerializer
 from ..models import Usuario, Agendamento
 from .utils import convert_to_iso
 from django.conf import settings

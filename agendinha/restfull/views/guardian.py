@@ -1,8 +1,6 @@
 from ..models import Responsavel
 from drf_spectacular.utils import extend_schema, OpenApiParameter
-from ..serializers import (
-    GuardianRequestSerializer, GuardianSerializer
-)
+from ..serializers.guardian import GuardianRequestSerializer, GuardianSerializer
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny

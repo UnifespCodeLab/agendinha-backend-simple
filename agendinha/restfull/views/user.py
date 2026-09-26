@@ -5,11 +5,11 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExampl
 from ..permissions import IsAdmin, IsAdminOrUser
 from .utils import generate_custom_jwt
 from google.auth.transport import requests
-from ..serializers import (
-    NotificationSerializer,
+from ..serializers.notification import NotificationSerializer
+from ..serializers.user import (
     UserRegisterSerializer,
     UserLoginSerializer, UserLoginResponseSerializer, UserUpdateSerializer,
-    UserSerializer, UserUpdatePasswordWithoutAuthSerializer,
+    UserSerializer,
     UserUpdatePasswordSerializer, UserGoogleLoginSerializer,
     UserRequestNewPasswordSerializer
 )
@@ -212,6 +212,13 @@ def user_login_google(request):
     except ValueError:
         return Response(status=status.HTTP_400_BAD_REQUEST)
 
+@extend_schema(
+    tags=['Autenticação - Usuários'],
+    summary='Pedido de alteração de senha do usuário',
+    description='Envia um pedido de alteração de senha para o e-mail do usuário',
+    request=UserRequestNewPasswordSerializer,
+    responses={200: None, 400: None},
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def user_request_password_update(request):
@@ -430,8 +437,15 @@ def user_avatar_update(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+@extend_schema(
+    tags=['Autenticação - Usuários'],
+    summary='Atualizar senha do usuário (com ou sem autenticação)',
+    description='Atualiza senha do usuário.',
+    request=UserUpdatePasswordSerializer,
+    responses={200: None, 400: OpenApiTypes.OBJECT, 500: OpenApiTypes.OBJECT},
+)
 @api_view(['PUT'])
-@permission_classes([IsAdminOrUser])
+@permission_classes([AllowAny])
 def user_password_update(request):
     serializer = UserUpdatePasswordSerializer(data=request.data)
     if not serializer.is_valid():
@@ -455,39 +469,6 @@ def user_password_update(request):
             {"message": "Não foi possível atualizar a senha do usuário."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
-@extend_schema(
-    tags=['Autenticação - Usuários'],
-    summary='Atualizar senha do usuário (sem autenticação)',
-    description='Atualiza senha do usuário não autenticado.',
-    request=UserUpdatePasswordWithoutAuthSerializer,
-    responses={200: None, 400: OpenApiTypes.OBJECT, 500: OpenApiTypes.OBJECT},
-)
-@api_view(['PUT'])
-@permission_classes([AllowAny])
-def user_password_update_without_auth(request):
-    serializer = UserUpdatePasswordWithoutAuthSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    assert isinstance(serializer.validated_data, dict)
-
-    try:
-        user = Usuario.objects.get(id_usuario=serializer.validated_data['id'])
-        if not user:
-            return Response(
-                {"message": "Usuário não encontrado."},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-        user.set_password(serializer.validated_data['senha_nova'])
-        user.save()
-        return Response(status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response(
-            {"message": "Não foi possível atualizar a senha do usuário."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-    
 
 @extend_schema(
     tags=['Autenticação - Usuários'],

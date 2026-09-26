@@ -1,9 +1,7 @@
 from ..models import Usuario, Role
 from .utils import generate_custom_jwt
-from ..serializers import (
-    AdminRegisterSerializer, UserLoginSerializer, UserLoginResponseSerializer,
-    AdminUserRegisterSerializer
-)
+from ..serializers.admin import AdminRegisterSerializer, AdminUserRegisterSerializer
+from ..serializers.user import UserLoginSerializer, UserLoginResponseSerializer
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.decorators import api_view, permission_classes
