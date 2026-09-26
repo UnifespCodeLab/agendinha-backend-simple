@@ -2,7 +2,8 @@
 from ..models import Notificacao, Usuario
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from ..permissions import IsAdmin, IsAdminOrUser
-from ..serializers import AppointmentInfoSerializer, NotificationSerializer
+from ..serializers.appointment import AppointmentInfoSerializer
+from ..serializers.notification import NotificationSerializer
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -10,7 +11,7 @@ from rest_framework import status
 from django.db import transaction
 from datetime import datetime, timedelta
 from django.utils import timezone
-from .subscription_views import send_push
+from .subscription import send_push
 
 # ============================================================================
 # VIEWS DE NOTIFICAÇÕES
