@@ -9,7 +9,7 @@ from ..serializers.notification import NotificationSerializer
 from ..serializers.user import (
     UserRegisterSerializer,
     UserLoginSerializer, UserLoginResponseSerializer, UserUpdateSerializer,
-    UserSerializer,
+    UserSerializer, UserIdentifierSerializer,
     UserUpdatePasswordSerializer, UserGoogleLoginSerializer,
     UserRequestNewPasswordSerializer
 )
@@ -22,6 +22,7 @@ from rest_framework import status
 from django.template.loader import render_to_string
 from django.db import transaction
 from rest_framework.parsers import MultiPartParser, FormParser
+from ..utils import is_number
 
 # ============================================================================
 # VIEWS DE AUTENTICAÇÃO - USUÁRIOS
@@ -93,8 +94,8 @@ def user_register(request):
 def user_register_email_confirm(user: Usuario):
     token = user.make_token()
     reset_link = f"{settings.FRONTEND_URL}/conta/{user.id_usuario}/{token}"
-    subject = 'Confirmação de cadastro - Agendinha do GRAACC'
-    text_content = 'E-mail para confirmação de cadastro'
+    subject = settings.EMAIL_SUBJECT_REGISTER_USER
+    text_content = settings.EMAIL_TEXT_CONTENT_REGISTER_USER
     html_message = render_to_string('confirm_account_email.html', {'nome': user.nome, 'reset_link': reset_link })
     msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [user.email])
     msg.attach_alternative(html_message, "text/html")
@@ -268,7 +269,7 @@ def user_request_password_update_email(user: Usuario):
     tags=['Autenticação - Usuários'],
     summary='Confirmar cadastro',
     description='Confirma o cadastro do usuário autenticado',
-    request=None,
+    request=UserIdentifierSerializer,
     responses={200: None},
 )
 @api_view(['POST'])
@@ -279,18 +280,27 @@ def user_confirm(request):
     Confirma cadastro do usuário autenticado
     Migrado de: UserController.confirmUser()
     """
-    user_info = request.data
+    serializer = UserIdentifierSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    assert isinstance(serializer.validated_data, dict)
+    
+    user_info = serializer.validated_data
     user = None
 
-    if 'id_usuario' in user_info:
-        user = Usuario.objects.get(id_usuario=user_info['id_usuario'])
-    elif 'email' in user_info:
-        user = Usuario.objects.get(email=user_info['email'])
+    if is_number(user_info['identifier']):
+        user = Usuario.objects.get(id_usuario=user_info['identifier'])
+    elif isinstance(user_info['identifier'], str):
+        user = Usuario.objects.get(email=user_info['identifier'])
     else:
         return Response(
-            {"detail": "id_usuario or email must be provided."},
+            {"detail": "O id_usuario ou o email deve ser fornecido, ou os dados informados não foram preenchidos corretamente."},
             status=status.HTTP_400_BAD_REQUEST
         )
+
+    if not user.cadastro_confirmado:
+        return Response({"message": "Usuário já confirmou o cadastro."}, status=status.HTTP_403_FORBIDDEN)
 
     user.cadastro_confirmado = True
     user.save()

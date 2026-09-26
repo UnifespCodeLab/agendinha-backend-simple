@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from ..models import Usuario
+from ..utils import is_number
 
 # ============================================================================
 # SERIALIZERS DE USUÁRIOS
@@ -51,11 +52,34 @@ class UserUpdatePasswordSerializer(serializers.Serializer):
     senha_atual = serializers.CharField(
         required=False, 
         allow_null=True, 
-        allow_blank=True, 
+        allow_blank=True,
         write_only=True, 
         style={'input_type': 'password'}
     )
     senha_nova = serializers.CharField(write_only=True, style={'input_type': 'password'})
+
+class UserIdentifierSerializer(serializers.Serializer):
+    identifier = serializers.CharField()
+
+    def validate_identifier(self, value):
+        value = value.strip()
+        if is_number(value):
+            try:
+                user = Usuario.objects.get(id_usuario=int(value))
+            except Usuario.DoesNotExist:
+                raise serializers.ValidationError(
+                    "Usuário não encontrado."
+                )
+        else:
+            try:
+                user = Usuario.objects.get(email=value)
+            except Usuario.DoesNotExist:
+                raise serializers.ValidationError(
+                    "Usuário não encontrado."
+                )
+
+        self.user = user
+        return value
 
 class UserSerializer(serializers.ModelSerializer):
     """
