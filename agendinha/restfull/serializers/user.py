@@ -47,7 +47,7 @@ class UserUpdateSerializer(serializers.Serializer):
     nome_completo_paciente = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
 class UserUpdatePasswordSerializer(serializers.Serializer):
-    id = serializers.IntegerField(read_only=True)
+    id = serializers.IntegerField()
     senha_atual = serializers.CharField(
         required=False, 
         allow_null=True, 
@@ -55,10 +55,6 @@ class UserUpdatePasswordSerializer(serializers.Serializer):
         write_only=True, 
         style={'input_type': 'password'}
     )
-    senha_nova = serializers.CharField(write_only=True, style={'input_type': 'password'})
-
-class UserUpdatePasswordWithoutAuthSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
     senha_nova = serializers.CharField(write_only=True, style={'input_type': 'password'})
 
 class UserSerializer(serializers.ModelSerializer):
