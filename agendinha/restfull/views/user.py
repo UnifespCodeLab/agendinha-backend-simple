@@ -453,14 +453,23 @@ def user_password_update(request):
 
     assert isinstance(serializer.validated_data, dict)
 
-    id = request.data['id']
     try:
-        user = Usuario.objects.get(id_usuario=id)
-        if not user.check_password(serializer.validated_data['senha_atual']):
-            return Response(
-                {"message": "Senha atual incompatível."},
-                status=status.HTTP_401_UNAUTHORIZED
-            )       
+        user = Usuario.objects.get(id_usuario=serializer.validated_data['id'])
+
+        if serializer.validated_data['senha_atual']:
+            auth_header = request.headers.get('Authorization')
+            if not user.check_password(serializer.validated_data['senha_atual']):
+                return Response(
+                    {"message": "Senha atual incompatível."},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            if not auth_header or not auth_header.startswith('Bearer '):
+                return Response(
+                    {"message": "Autenticação incompatível."},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
         user.set_password(serializer.validated_data['senha_nova'])
         user.save()
         return Response(status=status.HTTP_200_OK)
