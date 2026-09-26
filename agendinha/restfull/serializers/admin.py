@@ -12,3 +12,7 @@ class AdminRegisterSerializer(serializers.Serializer):
     nome = serializers.CharField(max_length=255)
     email = serializers.EmailField()
     senha = serializers.CharField(write_only=True, style={'input_type': 'password'})
+
+class AdminLoginResponseSerializer(serializers.Serializer):
+    nome = serializers.CharField()
+    token = serializers.CharField()

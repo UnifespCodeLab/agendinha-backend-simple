@@ -65,16 +65,21 @@ def user_register(request):
 
     assert isinstance(serializer.validated_data, dict)
     
-    # Verifica se email já existe
-    if Usuario.objects.filter(email=serializer.validated_data['cpf']).exists():
+    # Verifica se CPF já está cadastrado
+    if not Usuario.objects.filter(cpf=serializer.validated_data['cpf']):
         return Response(
-            {"message": "Email já cadastrado"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {"message": "CPF não está cadastrado"},
+            status=status.HTTP_400_BAD_REQUEST
         )
     
-    # Cria usuário
+    # Atualiza pré-cadastro do usuário
     try:
         user = Usuario.objects.get(cpf=serializer.validated_data['cpf'])
+        if user.cadastro_confirmado:
+            return Response(
+                {"message": "CPF já está cadastrado"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
         user.email = request.data['email']
         user.set_password(request.data['senha'])
         user_register_email_confirm(user) 
@@ -144,6 +149,13 @@ def user_login(request):
 
     return Response(response_data, status=status.HTTP_200_OK)
 
+@extend_schema(
+    tags=['Autenticação - Usuários'],
+    summary='Login de usuário com Google OAuth2',
+    description='Realiza login de usuário com Google OAuth2 e retorna token JWT',
+    request=UserGoogleLoginSerializer,
+    responses={200: UserLoginResponseSerializer, 400: None},
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def user_login_google(request):
