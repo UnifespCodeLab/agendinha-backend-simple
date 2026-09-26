@@ -29,6 +29,10 @@ ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Configurações de predefinição dos e-mails
+EMAIL_SUBJECT_REGISTER_USER = os.getenv('EMAIL_SUBJECT_REGISTER_USER', 'Confirmação de cadastro - Agendinha')
+EMAIL_TEXT_CONTENT_REGISTER_USER = os.getenv('EMAIL_TEXT_CONTENT_REGISTER_USER', 'E-mail para confirmação de cadastro')
+
 # OAuth2
 GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
