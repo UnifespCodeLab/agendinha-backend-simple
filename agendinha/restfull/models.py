@@ -26,10 +26,10 @@ class Usuario(models.Model):
     """
     id_usuario = models.BigAutoField(primary_key=True)
     nome = models.CharField(max_length=255, blank=True)
-    email = models.EmailField(unique=True)
-    cpf = models.CharField(max_length=14, blank=True)
+    email = models.EmailField()
+    cpf = models.CharField(max_length=14, blank=True, unique=True)
     senha = models.CharField(max_length=255, blank=True)
-    cadastro_confirmado = models.BooleanField(default=False)
+    cadastro_confirmado = models.BooleanField(default=False, null=False)
     responsavel = models.ForeignKey(
         Responsavel,
         on_delete=models.SET_NULL,

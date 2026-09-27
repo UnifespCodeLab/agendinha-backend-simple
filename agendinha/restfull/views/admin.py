@@ -115,18 +115,24 @@ def user_register(request):
     Registra usuário comum
     Migrado de: UserController.addUser()
     """
-    # Verifica se email já existe
-    if Usuario.objects.filter(cpf=request.data['cpf']).exists():
+    serializer = AdminUserRegisterSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    assert isinstance(serializer.validated_data, dict)
+
+    # Verifica se CPF já existe
+    if Usuario.objects.filter(cpf=serializer.validated_data['cpf']).exists():
         return Response(
             {"message": "CPF já foi cadastrado"},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            status=status.HTTP_400_BAD_REQUEST
         )
     
     # Cria usuário
     try:
         user = Usuario(
-            cpf=request.data['cpf'],
-            nome=request.data['nome']
+            cpf=serializer.validated_data['cpf'],
+            nome=serializer.validated_data['nome']
         )
         user.save()
         return Response(status=status.HTTP_200_OK)

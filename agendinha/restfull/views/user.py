@@ -69,7 +69,13 @@ def user_register(request):
     # Verifica se CPF já está cadastrado
     if not Usuario.objects.filter(cpf=serializer.validated_data['cpf']):
         return Response(
-            {"message": "CPF não está cadastrado"},
+            {"message": "CPF não está pré-cadastrado."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    if Usuario.objects.filter(email=serializer.validated_data['email']):
+        return Response(
+            {"message": "E-mail já está cadastrado."},
             status=status.HTTP_400_BAD_REQUEST
         )
     
@@ -78,12 +84,13 @@ def user_register(request):
         user = Usuario.objects.get(cpf=serializer.validated_data['cpf'])
         if user.cadastro_confirmado:
             return Response(
-                {"message": "CPF já está cadastrado"},
+                {"message": "Usuário já está cadastrado."},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-        user.email = request.data['email']
-        user.set_password(request.data['senha'])
-        user_register_email_confirm(user) 
+        user.email = serializer.validated_data['email']
+        user.set_password(serializer.validated_data['senha'])
+        user.save()
+        user_register_email_confirm(user)
         return Response(status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -299,7 +306,7 @@ def user_confirm(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    if not user.cadastro_confirmado:
+    if user.cadastro_confirmado:
         return Response({"message": "Usuário já confirmou o cadastro."}, status=status.HTTP_403_FORBIDDEN)
 
     user.cadastro_confirmado = True
@@ -316,22 +323,16 @@ def user_confirm(request):
 )
 @api_view(['GET'])
 @permission_classes([IsAdminOrUser])
-def user_get(request):
+def user_get(request, id):
     """
     GET /usuarios
     Retorna dados do usuário autenticado
     Migrado de: UserController.getUser()
     """
-    user_info = request.user
-    user = Usuario.objects.get(id_usuario=user_info.id_usuario)
+    user = Usuario.objects.get(id_usuario=id)
     serializer = UserSerializer(user)
 
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    assert isinstance(serializer.validated_data, dict)
-
-    notificacoes = Notificacao.objects.filter(usuario=serializer.validated_data['id_usuario'])
+    notificacoes = Notificacao.objects.filter(usuario=id)
     todas_notificacoes = NotificationSerializer(notificacoes, many=True).data
 
     return Response({
