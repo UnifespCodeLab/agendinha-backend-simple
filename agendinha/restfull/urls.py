@@ -37,7 +37,7 @@ urlpatterns = [
     path('usuarios/foto', user.user_avatar_update, name='user-avatar-update'),
     path('usuarios/email/redefinir-senha', user.user_request_password_update, name='user-request-password-update'),
     path('usuarios/redefinir-senha', user.user_password_update, name='user-password-update'),
-    path('usuarios', user.user_get, name='user-get'),  # GET
+    path('usuarios/<int:id>', user.user_get, name='user-get'),  # GET
     path('usuarios/pesquisar', user.user_search_by_name, name='user-search-name'),  # GET
     # Nota: PUT e DELETE para /usuarios serão tratados na mesma view com método HTTP
 
