@@ -112,7 +112,7 @@ def agendamento(paciente):
         titulo="Consulta de rotina",
         descricao="Consulta médica mensal",
         data=timezone.now() + timedelta(days=7),
-        local="Hospital GRAACC - Sala 101",
+        local="Sala 101",
         paciente=paciente
     )
 

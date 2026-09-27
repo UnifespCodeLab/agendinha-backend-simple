@@ -1,8 +1,3 @@
-"""
-Permissions customizadas para GRAACC API
-Migradas do Spring Security @PreAuthorize
-"""
-
 from rest_framework import permissions
 
 

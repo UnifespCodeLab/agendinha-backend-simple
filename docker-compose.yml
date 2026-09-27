@@ -14,6 +14,7 @@ services:
 
   api:
     build: .
+    working_dir: /app/graacc_backend
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
@@ -26,7 +27,7 @@ services:
 
   cron:
     build: .
-    command: /app/start-cron.sh
+    command: sh /app/start-cron.sh
     volumes:
       - .:/app
     env_file:

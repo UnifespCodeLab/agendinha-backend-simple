@@ -1,8 +1,3 @@
-"""
-Autenticação JWT Customizada para GRAACC API
-Compatível com tokens JWT dos microserviços Java
-"""
-
 from rest_framework import authentication, exceptions
 from django.conf import settings
 from .models import Usuario
