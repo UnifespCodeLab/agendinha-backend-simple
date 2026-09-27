@@ -1,10 +1,11 @@
 """
-Django settings for core project - GRAACC API Unificada
+Django settings for core project
 
 Migrado de microserviços Java Spring Boot para Django
 """
 
 import os
+import json
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
@@ -15,6 +16,8 @@ load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+CREDENTIALS_PATH = os.path.join(BASE_DIR, "credentials.json")
+
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-^51b%c6yj(c%ep(*w3(g4xd_ca==05mufj!*91gbdxs@w+%x%@')
 
@@ -23,6 +26,31 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Configurações de predefinição dos e-mails
+EMAIL_SUBJECT_REGISTER_USER = os.getenv('EMAIL_SUBJECT_REGISTER_USER', 'Confirmação de cadastro - Agendinha')
+EMAIL_TEXT_CONTENT_REGISTER_USER = os.getenv('EMAIL_TEXT_CONTENT_REGISTER_USER', 'E-mail para confirmação de cadastro')
+
+# OAuth2
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
+GOOGLE_TOKEN_URI = os.getenv('GOOGLE_TOKEN_URI')
+FRONTEND_URL = os.getenv('FRONTEND_URL', "http://localhost:3000")
+SECRET_KEY = "agendinha"
+
+# SMTP Server
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
+
+VAPID_PUBLIC_KEY = os.getenv('VAPID_PUBLIC_KEY')
+VAPID_PRIVATE_KEY = os.getenv('VAPID_PRIVATE_KEY')
+VAPID_ADMIN_EMAIL = os.getenv('VAPID_ADMIN_EMAIL')
 
 # Application definition
 
@@ -40,6 +68,11 @@ INSTALLED_APPS = [
     'drf_spectacular',
     # Local apps (migrados dos microserviços)
     'restfull',  # App criado anteriormente
+    'django.contrib.sites',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
 ]
 
 MIDDLEWARE = [
@@ -51,14 +84,33 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'allauth.account.middleware.AccountMiddleware',
 ]
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend', # standard django backend
+    'allauth.account.auth_backends.AuthenticationBackend', # all auth backend
+]
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+        'OAUTH_PKCE_ENABLED': True,
+    }
+}
 
 ROOT_URLCONF = 'core.urls'
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -79,9 +131,9 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DATABASE_NAME', 'graacc_db'),
-        'USER': os.getenv('DATABASE_USER', 'graacc_user'),
-        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'graacc_password'),
+        'NAME': os.getenv('DATABASE_NAME', 'agendinha_db'),
+        'USER': os.getenv('DATABASE_USER', 'agendinha_user'),
+        'PASSWORD': os.getenv('DATABASE_PASSWORD', 'password'),
         'HOST': os.getenv('DATABASE_HOST', 'localhost'),
         'PORT': os.getenv('DATABASE_PORT', '5432'),
     }
@@ -130,7 +182,7 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # ============================================================================
-# CONFIGURAÇÕES ESPECÍFICAS DA MIGRAÇÃO DOS MICROSERVIÇOS GRAACC
+# CONFIGURAÇÕES ESPECÍFICAS DA MIGRAÇÃO DOS MICROSERVIÇOS
 # ============================================================================
 
 # REST Framework Configuration
@@ -140,6 +192,7 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.authentication.TokenAuthentication'
     ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_RENDERER_CLASSES': [
@@ -173,8 +226,8 @@ CORS_ALLOW_ALL_ORIGINS = DEBUG  # Apenas em desenvolvimento
 
 # Spectacular (Swagger/OpenAPI) Configuration
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'GRAACC API Unificada',
-    'DESCRIPTION': 'API unificada para gerenciamento de agendamentos GRAACC - Migrado de microserviços Java Spring Boot',
+    'TITLE': 'Agendinha API Unificada',
+    'DESCRIPTION': 'API unificada para gerenciamento de agendamentos - Migrado de microserviços Java Spring Boot',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
@@ -183,7 +236,7 @@ SPECTACULAR_SETTINGS = {
             'BearerAuth': []
         }
     ],
-    'COMPONENTS': {
+    'APPEND_COMPONENTS': {
         'securitySchemes': {
             'BearerAuth': {
                 'type': 'http',
@@ -196,4 +249,8 @@ SPECTACULAR_SETTINGS = {
 
 # Security Token para JWT (mesmo token dos microserviços Java)
 SECURITY_TOKEN = os.getenv('SECURITY_TOKEN', SECRET_KEY)
-SECURITY_EMISSOR = os.getenv('SECURITY_EMISSOR', 'graacc-api-django')
+SECURITY_EMISSOR = os.getenv('SECURITY_EMISSOR', 'agendinha-api-django')
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'static'),
+]
