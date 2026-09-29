@@ -9,6 +9,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from datetime import datetime, timedelta
+from django.utils.timezone import make_aware
+from django.utils.timezone import make_aware
 from google_auth_oauthlib.flow import InstalledAppFlow
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
@@ -102,10 +104,10 @@ def appointment_create(request):
     
     # Converte data string para datetime
     try:
-        data_agendamento = datetime.strptime(
+        data_agendamento = make_aware(datetime.strptime(
             serializer.validated_data['data'],
             '%d/%m/%Y %H:%M'
-        )
+        ))
     except ValueError:
         return Response(
             {"message": "Erro ao converter Data do Agendamento - tente novamento no formato dd/MM/yyyy HH:mm"},
@@ -116,11 +118,11 @@ def appointment_create(request):
     try:
         agendamento = Agendamento(
             titulo=serializer.validated_data['titulo'],
-            descricao=serializer.validated_data['descricao'],
+            descricao=serializer.validated_data.get('descricao', ''),
             data=data_agendamento,
             local=serializer.validated_data['local'],
             usuario=user,
-            medico=request.data['medico']
+            medico=serializer.validated_data.get('medico', '')
         )
         agendamento.save()
         
@@ -220,10 +222,10 @@ def appointment_update(request, id):
     
     # Converte data string para datetime
     try:
-        data_agendamento = datetime.strptime(
+        data_agendamento = make_aware(datetime.strptime(
             serializer.validated_data['data'],
             '%d/%m/%Y %H:%M'
-        )
+        ))
     except ValueError:
         return Response(
             {"message": "Erro ao converter Data do Agendamento - tente novamento no formato dd/MM/yyyy HH:mm"},
@@ -237,6 +239,7 @@ def appointment_update(request, id):
         agendamento.data = data_agendamento
         agendamento.local = serializer.validated_data['local']
         agendamento.usuario = user
+        agendamento.medico = serializer.validated_data['medico']
         agendamento.save()
         
         return Response(
