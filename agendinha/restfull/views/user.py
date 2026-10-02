@@ -323,16 +323,16 @@ def user_confirm(request):
 )
 @api_view(['GET'])
 @permission_classes([IsAdminOrUser])
-def user_get(request, id):
+def user_get(request):
     """
     GET /usuarios
     Retorna dados do usuário autenticado
     Migrado de: UserController.getUser()
     """
-    user = Usuario.objects.get(id_usuario=id)
+    user = request.user
     serializer = UserSerializer(user)
 
-    notificacoes = Notificacao.objects.filter(usuario=id)
+    notificacoes = Notificacao.objects.filter(usuario=user.id_usuario)
     todas_notificacoes = NotificationSerializer(notificacoes, many=True).data
 
     return Response({
@@ -528,3 +528,25 @@ def user_delete(request):
             {"message": "Não existe nenhum usuario com esse id"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@extend_schema(
+    tags=['Autenticação - Usuários'],
+    summary='Pesquisar usuário por nome',
+    description='Busca usuários pelo nome (apenas ADMIN)',
+    parameters=[OpenApiParameter('nome', OpenApiTypes.STR, OpenApiParameter.QUERY)],
+    responses={200: UserSerializer(many=True)},
+)
+@api_view(['GET'])
+@permission_classes([IsAdmin])
+def user_search_by_name(request):
+    """
+    GET /usuarios/pesquisar?nome=...
+    Pesquisa pacientes por nome
+    """
+    nome = request.GET.get('nome', '')
+    if not nome:
+        return Response([], status=status.HTTP_200_OK)
+        
+    usuarios = Usuario.objects.filter(role=Role.USER, nome__icontains=nome)[:50]
+    serializer = UserSerializer(usuarios, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)

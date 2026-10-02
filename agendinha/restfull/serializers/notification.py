@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from ..models import Notificacao
+from django.utils.timezone import localtime
 
 # ============================================================================
 # SERIALIZERS DE NOTIFICAÇÕES
@@ -17,5 +18,6 @@ class NotificationSerializer(serializers.ModelSerializer):
         read_only_fields = ['id_notificacao']
 
     def get_data(self, obj):
-        """Formata data no formato dd/MM/yyyy HH:mm"""
-        return obj.data.strftime('%d/%m/%Y %H:%M')
+        if obj.data:
+            return localtime(obj.data).strftime('%d/%m/%Y %H:%M')
+        return None
