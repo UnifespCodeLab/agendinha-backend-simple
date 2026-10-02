@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from ..models import Agendamento
 from datetime import datetime
+from django.utils.timezone import localtime
 
 # ============================================================================
 # SERIALIZERS DE AGENDAMENTOS
@@ -11,22 +12,12 @@ class AppointmentRequestSerializer(serializers.Serializer):
     Serializer para criação/edição de agendamento
     Migrado de: AppointmentRequestDTO
     """
-    class Meta:
-        model = Agendamento
-        fields = [
-            'titulo',
-            'descricao',
-            'data',
-            'local',
-            'medico',
-            'id_usuario',
-        ]
-
-        extra_kwargs = {
-            'data': {
-                'format': '%d/%m/%Y %H:%M',
-            }
-        }
+    titulo = serializers.CharField(max_length=100)
+    descricao = serializers.CharField(max_length=255, required=False, allow_blank=True)
+    data = serializers.CharField()  # Formato: "dd/MM/yyyy HH:mm"
+    local = serializers.CharField(max_length=100)
+    medico = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+    id_usuario = serializers.IntegerField()
 
     def validate_data(self, value):
         """
@@ -46,14 +37,19 @@ class AppointmentSerializer(serializers.ModelSerializer):
     Serializer de agendamento
     Migrado de: AppointmentResponseDTO
     """   
+    id_paciente = serializers.IntegerField(source='usuario.id_usuario', read_only=True)
+    nome_paciente = serializers.CharField(source='usuario.nome', read_only=True)
+    data = serializers.SerializerMethodField()
+
     class Meta:
         model = Agendamento
-        fields = ['id_agendamento', 'titulo', 'descricao', 'data', 'local', 'medico', 'lembrete_enviado']
-        read_only_fields = ['id_agendamento', 'lembrete_enviado']
+        fields = ['id_agendamento', 'titulo', 'descricao', 'data', 'local', 'medico', 'id_paciente', 'nome_paciente', 'lembrete_enviado']
+        read_only_fields = ['id_agendamento', 'id_paciente', 'nome_paciente', 'lembrete_enviado']
 
     def get_data(self, obj):
-        """Formata data no formato dd/MM/yyyy HH:mm"""
-        return obj.data.strftime('%d/%m/%Y %H:%M')
+        if obj.data:
+            return localtime(obj.data).strftime('%d/%m/%Y %H:%M')
+        return None
 
 class AppointmentInfoSerializer(serializers.Serializer):
     """
