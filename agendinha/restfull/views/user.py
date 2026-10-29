@@ -4,7 +4,7 @@ from ..models import Notificacao, Usuario, Role, Responsavel
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from ..permissions import IsAdmin, IsAdminOrUser
 from .utils import generate_custom_jwt
-from google.auth.transport import requests
+from google.auth.transport import requests as google_requests
 from ..serializers.notification import NotificationSerializer
 from ..serializers.user import (
     UserRegisterSerializer,
@@ -23,6 +23,19 @@ from django.template.loader import render_to_string
 from django.db import transaction
 from rest_framework.parsers import MultiPartParser, FormParser
 from ..utils import is_number
+import requests as http_requests
+import logging
+
+logger = logging.getLogger(__name__)
+
+GOOGLE_REDIRECT_URI = "postmessage"
+CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events"
+ 
+class GoogleAuthError(Exception):
+    """Falha na autenticação com o Google (code inválido, token inválido, etc.)."""
+ 
+class GoogleUnavailableError(Exception):
+    """Não foi possível falar com o Google (rede, timeout)."""
 
 # ============================================================================
 # VIEWS DE AUTENTICAÇÃO - USUÁRIOS
@@ -70,13 +83,13 @@ def user_register(request):
     if not Usuario.objects.filter(cpf=serializer.validated_data['cpf']):
         return Response(
             {"message": "CPF não está pré-cadastrado."},
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_401_UNAUTHORIZED
         )
     
     if Usuario.objects.filter(email=serializer.validated_data['email']):
         return Response(
             {"message": "E-mail já está cadastrado."},
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_401_UNAUTHORIZED
         )
     
     # Atualiza pré-cadastro do usuário
@@ -90,7 +103,6 @@ def user_register(request):
         user.email = serializer.validated_data['email']
         user.set_password(serializer.validated_data['senha'])
         user.save()
-        user_register_email_confirm(user)
         return Response(status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
@@ -98,16 +110,6 @@ def user_register(request):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
-def user_register_email_confirm(user: Usuario):
-    token = user.make_token()
-    reset_link = f"{settings.FRONTEND_URL}/conta/{user.id_usuario}/{token}"
-    subject = settings.EMAIL_SUBJECT_REGISTER_USER
-    text_content = settings.EMAIL_TEXT_CONTENT_REGISTER_USER
-    html_message = render_to_string('confirm_account_email.html', {'nome': user.nome, 'reset_link': reset_link })
-    msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [user.email])
-    msg.attach_alternative(html_message, "text/html")
-    msg.send()
-    
 @extend_schema(
     tags=['Autenticação - Usuários'],
     summary='Login de usuário',
@@ -130,16 +132,22 @@ def user_login(request):
     assert isinstance(serializer.validated_data, dict)
 
     try:
-        user = Usuario.objects.get(email=serializer.validated_data['email'])   
+        user = Usuario.objects.get(email=serializer.validated_data['email'])
     except Usuario.DoesNotExist:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response({"error": "E-mail inválido."}, status=status.HTTP_400_BAD_REQUEST)
 
     # Verifica senha
     if not user.check_password(serializer.validated_data['senha']):
-        return Response(status=status.HTTP_400_BAD_REQUEST)
+        return Response(
+            {"error": "Senha inválida."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
 
     if user.modo_google:
-        return Response(status=status.HTTP_401_UNAUTHORIZED)
+        return Response(
+            {"error": "Usuário apenas pode fazer autenticação com Google."},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
     user_serializer = UserSerializer(user)
 
@@ -157,12 +165,60 @@ def user_login(request):
 
     return Response(response_data, status=status.HTTP_200_OK)
 
+def exchange_google_code(code: str) -> dict:
+    """
+    Troca o authorization code por tokens no endpoint do Google
+    e devolve o dict com id_token, access_token e scope.
+    O client_secret só existe aqui, no servidor.
+    """
+    try:
+        resp = http_requests.post(
+            settings.GOOGLE_TOKEN_URI,
+            data={
+                "code": code,
+                "client_id": settings.GOOGLE_CLIENT_ID,
+                "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                "redirect_uri": GOOGLE_REDIRECT_URI,
+                "grant_type": "authorization_code",
+            },
+            timeout=10,
+        )
+    except http_requests.RequestException as exc:
+        raise GoogleUnavailableError(str(exc)) from exc
+ 
+    if resp.status_code != 200:
+        error = resp.json().get("error") if resp.content else "unknown"
+        logger.warning("Google rejeitou o code: %s", error)
+        raise GoogleAuthError("Código de autorização inválido ou expirado.")
+ 
+    tokens = resp.json()
+    if not tokens.get("id_token"):
+        raise GoogleAuthError("Resposta do Google sem id_token.")
+    return tokens
+ 
+ 
+def verify_google_id_token(raw_id_token: str) -> dict:
+    """Valida assinatura, expiração e audiência (client_id) do id_token."""
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            raw_id_token,
+            google_requests.Request(),
+            settings.GOOGLE_CLIENT_ID,
+        )
+    except ValueError as exc:
+        raise GoogleAuthError("Token do Google inválido.") from exc
+ 
+    if not idinfo.get("email") or not idinfo.get("email_verified"):
+        raise GoogleAuthError("E-mail do Google não verificado.")
+    return idinfo
+ 
+ 
 @extend_schema(
     tags=['Autenticação - Usuários'],
     summary='Login de usuário com Google OAuth2',
-    description='Realiza login de usuário com Google OAuth2 e retorna token JWT',
+    description='Recebe o authorization code do Google, valida no servidor e retorna token JWT',
     request=UserGoogleLoginSerializer,
-    responses={200: UserLoginResponseSerializer, 400: None},
+    responses={200: UserLoginResponseSerializer, 400: None, 401: None, 403: None, 502: None},
 )
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -170,67 +226,67 @@ def user_login_google(request):
     serializer = UserGoogleLoginSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    assert isinstance(serializer.validated_data, dict)
-
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+ 
     try:
-        id = id_token.verify_oauth2_token(
-            serializer.validated_data["token"],
-            requests.Request(),
-            settings.GOOGLE_CLIENT_ID
+        google_tokens = exchange_google_code(serializer.validated_data["code"])
+        idinfo = verify_google_id_token(google_tokens["id_token"])
+    except GoogleUnavailableError:
+        logger.exception("Falha de comunicação com o Google")
+        return Response(
+            {"message": "Não foi possível contatar o Google. Tente novamente."},
+            status=status.HTTP_502_BAD_GATEWAY,
         )
+    except GoogleAuthError as exc:
+        return Response({"message": str(exc)}, status=status.HTTP_401_UNAUTHORIZED)
+ 
+    try:
+        user = Usuario.objects.get(email=idinfo["email"])
+    except Usuario.DoesNotExist:
+        return Response(
+            {"message": "E-mail não está cadastrado."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+ 
+    if user.cadastro_confirmado and not user.modo_google:
+        return Response(
+            {"message": "Usuário precisa logar via e-mail."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+ 
+    if not user.modo_google:
+        first_name = idinfo.get("given_name", "")
+        last_name = idinfo.get("family_name", "")
+        user.nome = user.nome or f"{first_name} {last_name}".strip()
+        user.modo_google = True
+        user.cadastro_confirmado = True
+ 
+    picture = idinfo.get("picture")
+    if picture:
+        try:
+            user.save_image_from_url(picture)
+        except Exception:
+            # Falha ao baixar a foto não deve impedir o login
+            logger.warning("Não foi possível salvar a foto do usuário %s", user.pk)
+ 
+    user.save()
+ 
+    token = generate_custom_jwt(user)
+ 
+    notifications = Notificacao.objects.filter(usuario_id=user.id_usuario)
+ 
+    calendar_granted = CALENDAR_SCOPE in google_tokens.get("scope", "").split()
+    google_access_token = google_tokens.get("access_token") if calendar_granted else None
+ 
+    return Response(
+        {
+            "usuario": UserSerializer(user).data,
+            "notificacoes": NotificationSerializer(notifications, many=True).data,
+            "token": token,
+            "google_access_token": google_access_token,
+        },
+        status=status.HTTP_200_OK,
+    )
 
-        email = id["email"]
-        first_name = id.get("given_name", "")
-        last_name = id.get("family_name", "")
-
-        user, created = Usuario.objects.get_or_create(email=email)
-
-        # Gera token JWT customizado
-        token = generate_custom_jwt(user)
-
-        if created:
-            user.nome = f"{first_name} {last_name}"
-            user.modo_google = True
-            user.save_image_from_url(id['picture'])
-            user.save()
-
-            user_serializer = UserSerializer(user)
-
-            response_data = {
-                'usuario': user_serializer,
-                'notificacoes': [],
-                'token': token,
-            }
-        else:
-            if not user.modo_google:
-                return Response({
-                    "error": "Usuário precisa logar via e-mail.",
-                }, status=status.HTTP_403_FORBIDDEN)
-            
-            user_serializer = UserSerializer(user)
-
-            if not user_serializer.is_valid():
-                return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-            assert isinstance(user_serializer.data, dict)
-
-            notifications_obj = Notificacao.objects.filter(id_usuario=user_serializer.data['id_usuario'])
-            notifications_data = NotificationSerializer(notifications_obj, many=True).data
-            
-            response_data = {
-                'usuario': user_serializer,
-                'notificacoes': notifications_data,
-                'token': token,
-            }
-
-        return Response(response_data, status=status.HTTP_200_OK)
-
-    except ValueError:
-        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 @extend_schema(
     tags=['Autenticação - Usuários'],
@@ -265,7 +321,7 @@ def user_request_password_update(request):
 def user_request_password_update_email(user: Usuario):
     token = user.make_token()
     reset_link = f"{settings.FRONTEND_URL}/senha/{user.id_usuario}/{token}"
-    subject = 'Alteração de Senha - Agendinha do GRAACC'
+    subject = 'Alteração de Senha - Agendinha'
     text_content = 'E-mail para alteração de senha'
     html_message = render_to_string('password_reset_email.html', {'nome': user.nome, 'reset_link': reset_link })
     msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [user.email])
@@ -313,6 +369,34 @@ def user_confirm(request):
     user.save()
     return Response(status=status.HTTP_200_OK)
 
+@extend_schema(
+    tags=['Autenticação - Usuários'],
+    summary='Confirmar cadastro e redefinir senha',
+    description='Confirma o cadastro e atualiza senha do do usuário autenticado',
+    request=UserUpdatePasswordSerializer,
+    responses={200: None, 400: None},
+)
+@api_view(['PUT'])
+@permission_classes([AllowAny])
+def user_confirm_with_password_update(request):
+    serializer = UserUpdatePasswordSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    assert isinstance(serializer.validated_data, dict)
+
+    try:
+        user = Usuario.objects.get(id_usuario=serializer.validated_data['id'])
+        user.cadastro_confirmado = True
+        user.set_password(serializer.validated_data['senha_nova'])
+        user.save()
+        return Response(status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response(
+            {"message": "Não foi possível atualizar a senha do usuário.",
+             "error": e},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )   
 
 @extend_schema(
     tags=['Autenticação - Usuários'],
@@ -329,7 +413,7 @@ def user_get(request):
     Retorna dados do usuário autenticado
     Migrado de: UserController.getUser()
     """
-    user = request.user
+    user = Usuario.objects.get(id_usuario=request.user.id_usuario)
     serializer = UserSerializer(user)
 
     notificacoes = Notificacao.objects.filter(usuario=user.id_usuario)
@@ -340,6 +424,33 @@ def user_get(request):
         'notificacoes': todas_notificacoes
     }, status=status.HTTP_200_OK)
 
+@extend_schema(
+    tags=['Autenticação - Usuários'],
+    summary='Pesquisar usuário por id',
+    description='Busca usuários pelo id, apenas se estiver com login',
+    responses={200: UserSerializer()},
+)
+@api_view(['GET'])
+@permission_classes([IsAdminOrUser])
+def user_search_by_id(request):
+    """
+    GET /usuarios/pesquisar?id=...
+    Pesquisa pacientes por id
+    """
+    id = request.GET.get('id', '')
+    if not id:
+        return Response({}, status=status.HTTP_200_OK)
+        
+    user = Usuario.objects.get(id_usuario=id)
+    user_serializer = UserSerializer(user)
+
+    notificacoes = Notificacao.objects.filter(usuario=id)
+    todas_notificacoes = NotificationSerializer(notificacoes, many=True).data
+
+    return Response({
+        'usuario': user_serializer.data,
+        'notificacoes': todas_notificacoes
+    }, status=status.HTTP_200_OK)
 
 @extend_schema(
     tags=['Autenticação - Usuários'],
@@ -476,10 +587,8 @@ def user_password_update(request):
 
     assert isinstance(serializer.validated_data, dict)
 
-    try:
-        user = Usuario.objects.get(id_usuario=serializer.validated_data['id'])
-
-        if serializer.validated_data['senha_atual']:
+    if 'senha_atual' in request.data:
+        try:
             auth_header = request.headers.get('Authorization')
             if not user.check_password(serializer.validated_data['senha_atual']):
                 return Response(
@@ -492,13 +601,27 @@ def user_password_update(request):
                     {"message": "Autenticação incompatível."},
                     status=status.HTTP_401_UNAUTHORIZED
                 )
+            user = Usuario.objects.get(id_usuario=serializer.validated_data['id'])
+            user.set_password(serializer.validated_data['senha_nova'])
+            user.save()
+            return Response(status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"message": "Não foi possível atualizar a senha do usuário.",
+                "error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
+    try:
+        user = Usuario.objects.get(id_usuario=serializer.validated_data['id'])
         user.set_password(serializer.validated_data['senha_nova'])
         user.save()
         return Response(status=status.HTTP_200_OK)
     except Exception as e:
+        print(e)
         return Response(
-            {"message": "Não foi possível atualizar a senha do usuário."},
+            {"message": "Não foi possível atualizar a senha do usuário.",
+             "error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

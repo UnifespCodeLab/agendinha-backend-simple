@@ -10,13 +10,6 @@ class JWTAuthentication(authentication.BaseAuthentication):
     e tokens gerados pelo Django.
     
     Header format: Authorization: Bearer <token>
-    
-    Claims esperados do token:
-    - sub: email do usuário
-    - iss: emissor (deve corresponder a SECURITY_EMISSOR)
-    - idUsuario: ID do usuário
-    - idPaciente: ID do paciente (pode ser null)
-    - role: role do usuário (ROLE_USER ou ROLE_ADMIN)
     """
     
     keyword = 'Bearer'
@@ -72,7 +65,6 @@ class JWTAuthentication(authentication.BaseAuthentication):
         # Extrai informações do payload
         email = payload.get('sub')
         id_usuario = payload.get('idUsuario')
-        id_paciente = payload.get('idPaciente')
         role = payload.get('role')
         
         if not email or not id_usuario:
@@ -82,7 +74,6 @@ class JWTAuthentication(authentication.BaseAuthentication):
         # Isso é mais eficiente e compatível com tokens gerados externamente
         user = UserLoggedInfo(
             id_usuario=id_usuario,
-            id_paciente=id_paciente,
             email=email,
             role=role
         )
@@ -104,9 +95,8 @@ class UserLoggedInfo:
     Este objeto é usado como request.user após autenticação bem-sucedida
     """
     
-    def __init__(self, id_usuario, id_paciente, email, role):
+    def __init__(self, id_usuario, email, role):
         self.id_usuario = id_usuario
-        self.id_paciente = id_paciente
         self.email = email
         self.role = role
         self.is_authenticated = True
