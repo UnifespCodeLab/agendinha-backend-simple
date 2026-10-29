@@ -5,21 +5,26 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from pywebpush import webpush
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 import json
 
+@extend_schema(
+    tags=['PushSubscription'],
+    summary='Salvar inscrição',
+    description='Salva a inscrição do usuário para notificações push',
+    responses={200: None, 400: None},
+)
 @api_view(['POST'])
 @permission_classes([IsAdminOrUser])
 def save_subscription(request):
-    data = json.loads(request.body)
-
-    user = Usuario.objects.get(id_usuario=data["id_usuario"])
+    user = Usuario.objects.get(id_usuario=request.data["id_usuario"])
 
     PushSubscription.objects.update_or_create(
         usuario=user,
-        endpoint=data["endpoint"],
+        endpoint=request.data["endpoint"],
         defaults={
-            "p256dh": data["keys"]["p256dh"],
-            "auth": data["keys"]["auth"],
+            "p256dh": request.data["keys"]["p256dh"],
+            "auth": request.data["keys"]["auth"],
         }
     )
 
