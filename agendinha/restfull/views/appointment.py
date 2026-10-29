@@ -16,10 +16,16 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from ..permissions import IsAdmin, IsAdminOrUser, IsUser
 
+@extend_schema(
+    tags=['Agendamentos'],
+    summary='Exportar tarefa para o Google Calendar',
+    description='Exporta tarefa para o Google Calendar de um usuário logado via OAuth2.',
+    responses={200: None},
+)
 @api_view(['POST'])
 @permission_classes([IsAdminOrUser])
 def appointment_export_task_to_google_calendar(request):
-    appointment = request.data['exam']
+    appointment = request.data['appointment']
 
     appointment_date = convert_to_iso(appointment['data'])
     dt = datetime.fromisoformat(appointment_date)
