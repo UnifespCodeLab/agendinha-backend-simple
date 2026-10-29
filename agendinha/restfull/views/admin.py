@@ -1,7 +1,10 @@
 from ..models import Usuario, Role
+from django.db import transaction
 from .utils import generate_custom_jwt
 from ..serializers.admin import AdminRegisterSerializer, AdminUserRegisterSerializer
 from ..serializers.user import UserLoginSerializer, UserLoginResponseSerializer
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
 from drf_spectacular.utils import extend_schema
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.decorators import api_view, permission_classes
@@ -9,6 +12,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from ..permissions import IsAdmin
+from django.template.loader import render_to_string
 
 # ============================================================================
 # VIEWS DE AUTENTICAÇÃO - ADMIN
@@ -48,7 +52,7 @@ def admin_register(request):
             nome=serializer.validated_data['nome'],
             email=serializer.validated_data['email'],
             role=Role.ADMIN,
-            cadastro_confirmado=False
+            cadastro_confirmado=True
         )
         admin.set_password(serializer.validated_data['senha'])
         admin.save()
@@ -130,14 +134,28 @@ def user_register(request):
     
     # Cria usuário
     try:
-        user = Usuario(
-            cpf=serializer.validated_data['cpf'],
-            nome=serializer.validated_data['nome']
-        )
-        user.save()
+        with transaction.atomic():
+            user = Usuario(
+                cpf=serializer.validated_data['cpf'],
+                nome=serializer.validated_data['nome'],
+                email=serializer.validated_data['email'],
+            )
+            user.set_password(serializer.validated_data['senha'])
+            user.save()
+            user_register_email_confirm(user)
         return Response(status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
-            {"message": "Erro ao cadastrar usuario."},
+            {"message": "Erro ao cadastrar usuario.", "error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+def user_register_email_confirm(user: Usuario) -> None:
+    token = user.make_token()
+    reset_link = f"{settings.FRONTEND_URL}/conta/{user.id_usuario}/{token}"
+    subject = settings.EMAIL_SUBJECT_REGISTER_USER
+    text_content = settings.EMAIL_TEXT_CONTENT_REGISTER_USER
+    html_message = render_to_string('confirm_account_email.html', {'nome': user.nome, 'reset_link': reset_link })
+    msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [user.email])
+    msg.attach_alternative(html_message, "text/html")
+    msg.send()
