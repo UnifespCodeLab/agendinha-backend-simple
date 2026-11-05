@@ -23,7 +23,7 @@ class TestAppointmentCreate:
             'titulo': 'Consulta Teste',
             'descricao': 'Descrição da consulta',
             'data': future_date,
-            'local': 'Hospital GRAACC',
+            'local': 'Hospital Agendinha',
             'nome_completo_paciente': paciente.nome
         }
         

@@ -1,32 +1,18 @@
-# GRAACC Backend - API Django Unificada
+# Agendinha Backend - API Django
 
 ## 📋 Visão Geral
 
-API Django RESTful completa para o sistema GRAACC Agendinha, migrada de 4 microserviços Java Spring Boot para uma única aplicação Django unificada.
+API Django RESTful para o sistema Agendinha, responsável pelo gerenciamento de usuários, responsáveis, agendamentos e notificações. A aplicação é uma única API Django unificada (originalmente migrada de microserviços Java Spring Boot).
 
-### ✨ Arquitetura Migrada
+### 🧩 Principais Funcionalidades
 
-**Antes (4 microserviços independentes):**
-- API Orquestrador (porta 8080) - Gateway
-- MS Usuários (porta 8081) - Autenticação e gerenciamento de usuários
-- MS Agendamentos (porta 8082) - Pacientes e agendamentos
-- MS Notificações (porta 8083) - Sistema de notificações
-
-**Depois (1 API unificada):**
-- ✅ **API Django Unificada (porta 8000)** - Todas as funcionalidades integradas
-
-### 🎯 Status do Projeto
-
-**✅ IMPLEMENTAÇÃO COMPLETA - 100%**
-
-- ✅ **32 endpoints implementados** (100% dos microserviços Java)
-- ✅ **Autenticação JWT customizada** compatível com Java
-- ✅ **4 models** (Usuario, Paciente, Agendamento, Notificacao)
-- ✅ **Permissions baseadas em roles** (ADMIN, USER)
-- ✅ **Criptografia BCrypt** compatível com Java
-- ✅ **Documentação Swagger/OpenAPI** integrada
-- ✅ **CORS configurado**
-- ✅ **PostgreSQL** configurado
+- Autenticação JWT customizada e login via Google OAuth2
+- Gerenciamento de usuários (comum e administrador)
+- Cadastro e busca de responsáveis
+- CRUD de agendamentos
+- Notificações automáticas e push (Web Push / VAPID)
+- Documentação Swagger/OpenAPI integrada
+- CORS configurado e banco PostgreSQL
 
 ---
 
@@ -34,7 +20,7 @@ API Django RESTful completa para o sistema GRAACC Agendinha, migrada de 4 micros
 
 ### Pré-requisitos
 
-- Python 3.10+
+- Python 3.10+ (a imagem Docker usa Python 3.12)
 - PostgreSQL 14+
 - Git
 
@@ -42,33 +28,30 @@ API Django RESTful completa para o sistema GRAACC Agendinha, migrada de 4 micros
 
 ```bash
 # 1. Clone o repositório
-git clone https://github.com/UnifespCodeLab/graacc-backend-simple.git
-cd graacc-backend-simple/graacc_backend
+git clone https://github.com/UnifespCodeLab/agendinha-backend-simple.git
+cd agendinha-backend-simple
 
 # 2. Crie e ative o ambiente virtual
 python -m venv env
 source env/bin/activate  # Linux/Mac
 # ou
-env\Scripts\activate  # Windows
+env\Scripts\activate     # Windows
 
 # 3. Instale as dependências
-pip install -r ../requirements.txt
+pip install -r requirements.txt
 
 # 4. Configure o banco de dados PostgreSQL
-# Crie um banco de dados chamado 'graacc_db'
+# Crie um banco de dados chamado 'agendinha_db'
 psql -U postgres
-CREATE DATABASE graacc_db;
+CREATE DATABASE agendinha_db;
 \q
 
 # 5. Configure as variáveis de ambiente
-# Edite core/settings.py ou crie arquivo .env com:
-# DATABASE_NAME=graacc_db
-# DATABASE_USER=postgres
-# DATABASE_PASSWORD=sua_senha
-# SECURITY_TOKEN=sua_chave_secreta_jwt
-# SECURITY_EMISSOR=graacc-api-django
+# Copie o arquivo de exemplo e preencha os valores
+cp .env.example .env
 
-# 6. Execute as migrações
+# 6. Entre no diretório do projeto Django e execute as migrações
+cd agendinha
 python manage.py makemigrations
 python manage.py migrate
 
@@ -89,102 +72,130 @@ Documentação Swagger: **http://localhost:8000/api/docs/**
 
 ### Base URL
 ```
-http://localhost:8000/graacc/api/
+http://localhost:8000/agendinha/api/
 ```
 
-### 🔐 Autenticação - Usuários (9 endpoints)
+> Os endpoints abaixo refletem as rotas definidas em `agendinha/restfull/urls.py`.
 
-| Método | Endpoint | Descrição | Auth |
-|--------|----------|-----------|------|
-| POST | `/usuarios/registrar` | Registrar usuário comum | ❌ |
-| POST | `/usuarios/pacienteid/registrar` | Registrar com ID paciente | ❌ |
-| POST | `/usuarios/login` | Login de usuário | ❌ |
-| POST | `/usuarios/confirmar` | Confirmar cadastro | ✅ USER/ADMIN |
-| GET | `/usuarios` | Obter dados do usuário | ✅ USER/ADMIN |
-| PUT | `/usuarios/update` | Atualizar usuário | ✅ USER/ADMIN |
-| DELETE | `/usuarios/delete` | Deletar usuário | ✅ USER/ADMIN |
-| POST | `/admin/registrar` | Registrar administrador | ❌ |
-| POST | `/admin/login` | Login de administrador | ❌ |
+### 🏥 Health Check
 
-### 👥 Pacientes (6 endpoints)
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/hello` | Teste de conectividade |
 
-| Método | Endpoint | Descrição | Auth |
-|--------|----------|-----------|------|
-| POST | `/pacientes/create` | Criar paciente | ✅ ADMIN |
-| GET | `/pacientes` | Listar todos pacientes | ✅ ADMIN |
-| PUT | `/pacientes/{id}` | Editar paciente | ✅ ADMIN |
-| DELETE | `/pacientes/{id}/delete` | Deletar paciente | ✅ ADMIN |
-| POST | `/pacientes/pesquisar` | Buscar por nome | ❌ |
-| GET | `/pacientes/pesquisar/{id}` | Buscar por ID | ❌ |
+### 🔐 Usuários
 
-### 📅 Agendamentos (6 endpoints)
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| POST | `/usuarios/registrar` | Registrar usuário |
+| POST | `/usuarios/login` | Login de usuário |
+| POST | `/usuarios/login/google` | Login via Google OAuth2 |
+| POST | `/usuarios/confirmar` | Confirmar cadastro |
+| POST | `/usuarios/confirmar-redefinir-senha` | Confirmar e redefinir senha |
+| GET | `/usuarios/<id>` | Buscar usuário por ID |
+| POST | `/usuarios/foto` | Atualizar avatar do usuário |
+| POST | `/usuarios/email/redefinir-senha` | Solicitar redefinição de senha por e-mail |
+| POST | `/usuarios/redefinir-senha` | Redefinir senha |
+| GET | `/usuarios` | Obter dados do usuário |
+| GET | `/usuarios/pesquisar` | Buscar usuário por nome |
+| PUT | `/usuarios/update` | Atualizar usuário |
+| DELETE | `/usuarios/delete` | Deletar usuário |
 
-| Método | Endpoint | Descrição | Auth |
-|--------|----------|-----------|------|
-| POST | `/agendamentos/create` | Criar agendamento | ✅ ADMIN |
-| GET | `/agendamentos/{id}` | Obter agendamento | ✅ USER/ADMIN |
-| GET | `/agendamentos` | Listar todos | ✅ ADMIN |
-| PUT | `/agendamentos/{id}/update` | Editar agendamento | ✅ ADMIN |
-| DELETE | `/agendamentos/{id}/delete` | Deletar agendamento | ✅ ADMIN |
-| GET | `/agendamentos/usuario` | Listar do usuário | ✅ USER |
+### 👤 Admin
 
-### 🔔 Notificações (6 endpoints)
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| POST | `/admin/registrar` | Registrar administrador |
+| POST | `/admin/usuarios/registrar` | Admin registra usuário |
+| POST | `/admin/login` | Login de administrador |
 
-| Método | Endpoint | Descrição | Auth |
-|--------|----------|-----------|------|
-| POST | `/notificacoes` | Criar notificações | ✅ ADMIN |
-| POST | `/notificacoes/conjunto` | Criar em lote | ✅ ADMIN |
-| GET | `/notificacoes/{id_agendamento}` | Listar por agendamento | ✅ USER/ADMIN |
-| POST | `/notificacoes/naoLidas` | Listar não lidas | ✅ USER/ADMIN |
-| POST | `/notificacoes/{id}/lida` | Marcar como lida | ✅ USER/ADMIN |
-| DELETE | `/notificacoes/{id}/delete` | Deletar por agendamento | ✅ ADMIN |
+### 👥 Responsáveis
 
-### 🏥 Health Check (1 endpoint)
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/responsaveis` | Listar responsáveis (ADMIN) |
+| POST | `/responsaveis/create` | Criar responsável |
+| POST | `/responsaveis/pesquisar` | Buscar por nome |
+| GET | `/responsaveis/pesquisar/<id>` | Buscar por ID |
+| PUT | `/responsaveis/<id>` | Editar responsável |
+| DELETE | `/responsaveis/<id>/delete` | Deletar responsável |
 
-| Método | Endpoint | Descrição | Auth |
-|--------|----------|-----------|------|
-| GET | `/hello` | Teste de conectividade | ❌ |
+### 📅 Agendamentos
 
-**Total: 32 endpoints implementados**
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/agendamentos` | Listar todos (ADMIN) |
+| POST | `/agendamentos/create` | Criar agendamento |
+| GET | `/agendamentos/<id>` | Obter agendamento |
+| PUT | `/agendamentos/<id>/update` | Editar agendamento |
+| DELETE | `/agendamentos/<id>/delete` | Deletar agendamento |
+| GET | `/agendamentos/usuario` | Listar do usuário |
+| POST | `/agendamentos/google` | Exportar para o Google Calendar |
+
+### 🔔 Notificações
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| POST | `/notificacoes` | Criar notificação |
+| POST | `/notificacoes/conjunto` | Criar em lote |
+| GET | `/notificacoes/<id_agendamento>` | Listar por agendamento |
+| GET | `/notificacoes/usuario/<id_usuario>` | Listar por usuário |
+| GET | `/notificacoes/id/<id_notificacao>` | Deletar por ID |
+| POST | `/notificacoes/naoLidas` | Listar não lidas |
+| POST | `/notificacoes/<id_notificacao>/lida` | Marcar como lida |
+| DELETE | `/notificacoes/<id_agendamento>/delete` | Deletar por agendamento |
+
+### 🔔 Push / Inscrições
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| POST | `/salvar-inscricao` | Salvar inscrição de push notification |
+
+### 🖥️ Páginas HTML (templates)
+
+| Método | Endpoint | Descrição |
+|--------|----------|-----------|
+| GET | `/criar-responsavel` | Página para criar responsável |
+| GET | `/criar-agendamento` | Página para criar agendamento |
+| GET | `/criar-notificacao` | Página para criar notificação |
 
 ---
 
 ## 🗄️ Estrutura do Banco de Dados
 
-### Tabela: `usuario`
-```sql
-- id_usuario (BIGINT, PK, AUTO_INCREMENT)
-- nome (VARCHAR)
-- email (VARCHAR, UNIQUE)
-- senha (VARCHAR) -- BCrypt hash
-- cadastro_confirmado (BOOLEAN)
-- role (VARCHAR) -- 'ROLE_USER' ou 'ROLE_ADMIN'
-- id_paciente (BIGINT, nullable)
-```
+Modelos definidos em `agendinha/restfull/models.py`.
 
-### Tabela: `paciente`
-```sql
-- id_paciente (BIGINT, PK, AUTO_INCREMENT)
-- nome (VARCHAR, UNIQUE)
-```
+### Tabela: `usuario`
+- `id_usuario` (BIGINT, PK)
+- `nome`, `email`, `cpf` (único)
+- `senha` (BCrypt hash)
+- `cadastro_confirmado` (BOOLEAN)
+- `id_responsavel` (FK → responsavel, nullable)
+- `role` (`ROLE_USER` ou `ROLE_ADMIN`)
+- `foto_perfil`, `modo_google`, `timeout_seconds`, `ativar_notificacoes_consultas`
+
+### Tabela: `responsavel`
+- `id_responsavel` (BIGINT, PK)
+- `nome`
+- `telefone` (único)
 
 ### Tabela: `agendamento`
-```sql
-- id_agendamento (BIGINT, PK, AUTO_INCREMENT)
-- titulo (VARCHAR)
-- descricao (VARCHAR)
-- data (TIMESTAMP)
-- local (VARCHAR)
-- id_paciente (BIGINT, FK → paciente)
-```
+- `id_agendamento` (BIGINT, PK)
+- `titulo`, `descricao`, `data` (TIMESTAMP), `local`, `medico`
+- `id_usuario` (FK → usuario, nullable)
+- `lembrete_enviado` (BOOLEAN)
 
 ### Tabela: `notificacao`
-```sql
-- id_notificacao (BIGINT, PK, AUTO_INCREMENT)
-- id_agendamento (BIGINT)
-- data (TIMESTAMP)
-- lida (BOOLEAN)
-```
+- `id_notificacao` (BIGINT, PK)
+- `id_agendamento` (BIGINT)
+- `data` (TIMESTAMP), `lida` (BOOLEAN)
+- `titulo`, `descricao`
+- `id_usuario` (FK → usuario, nullable)
+
+### Tabela: `pushsubscription`
+- `id` (PK)
+- `id_usuario` (FK → usuario, nullable)
+- `endpoint`, `p256dh`, `auth`
 
 ---
 
@@ -192,85 +203,80 @@ http://localhost:8000/graacc/api/
 
 ### JWT Customizado
 
-Tokens JWT compatíveis com os microserviços Java originais:
+A autenticação customizada fica em `agendinha/restfull/authentication.py`. Configurações de token em `SIMPLE_JWT` (`core/settings.py`):
 
-**Claims do Token:**
-```json
-{
-  "sub": "usuario@email.com",
-  "iss": "graacc-api-django",
-  "idUsuario": 123,
-  "idPaciente": 456,
-  "role": "ROLE_USER",
-  "iat": 1700000000,
-  "exp": 1700086400
-}
-```
-
-**Algoritmo:** HMAC256  
-**Expiração:** 24 horas
+- **Algoritmo:** HS256
+- **Expiração do access token:** 24 horas
+- **Expiração do refresh token:** 7 dias
 
 ### Uso do Token
 
 ```bash
 # 1. Fazer login
-curl -X POST http://localhost:8000/graacc/api/usuarios/login \
+curl -X POST http://localhost:8000/agendinha/api/usuarios/login \
   -H "Content-Type: application/json" \
   -d '{"email": "usuario@email.com", "senha": "senha123"}'
 
-# Response: {"nome": "Nome Usuario", "token": "eyJhbGciOi..."}
-
 # 2. Usar token em requisições protegidas
-curl -X GET http://localhost:8000/graacc/api/usuarios \
-  -H "Authorization: Bearer eyJhbGciOi..."
+curl -X GET http://localhost:8000/agendinha/api/usuarios \
+  -H "Authorization: Bearer SEU_TOKEN"
 ```
 
 ### Roles e Permissões
 
-- **ROLE_USER**: Acesso aos próprios dados e agendamentos
-- **ROLE_ADMIN**: Acesso completo ao sistema
+- **ROLE_USER**: acesso aos próprios dados e agendamentos
+- **ROLE_ADMIN**: acesso completo ao sistema
 
 ### Criptografia
 
-- **Senhas:** BCrypt (compatível com Java BCryptPasswordEncoder)
-- **Tokens:** JWT com HMAC256
+- **Senhas:** BCrypt
+- **Tokens:** JWT com HS256
 
 ---
 
 ## 📁 Estrutura do Projeto
 
 ```
-graacc-backend-simple/
-├── graac_backend/              # Projeto Django
-│   ├── core/                   # Configurações principais
-│   │   ├── settings.py         # ✅ JWT, CORS, PostgreSQL, Swagger
-│   │   ├── urls.py             # ✅ Rotas principais
+agendinha-backend-simple/
+├── agendinha/                   # Projeto Django
+│   ├── core/                    # Configurações principais
+│   │   ├── settings.py          # JWT, CORS, PostgreSQL, Swagger, OAuth2
+│   │   ├── urls.py              # Rotas raiz + documentação
 │   │   ├── wsgi.py
 │   │   └── asgi.py
-│   ├── restfull/               # App principal
-│   │   ├── models.py           # ✅ 4 models implementados
-│   │   ├── serializers.py      # ✅ 17 serializers
-│   │   ├── views.py            # ✅ 32 views (endpoints)
-│   │   ├── urls.py             # ✅ Rotas configuradas
-│   │   ├── permissions.py      # ✅ 4 permission classes
-│   │   ├── authentication.py   # ✅ JWT customizado
+│   ├── restfull/                # App principal
+│   │   ├── models.py            # Models (Usuario, Responsavel, Agendamento, Notificacao, PushSubscription)
+│   │   ├── serializers/         # Serializers por domínio
+│   │   ├── views/               # Views por domínio
+│   │   ├── urls.py              # Rotas da API
+│   │   ├── permissions.py       # Permission classes
+│   │   ├── authentication.py    # JWT customizado
+│   │   ├── services.py          # Lógica de serviços (e-mail, etc.)
+│   │   ├── schema.py
 │   │   ├── admin.py
-│   │   └── migrations/
+│   │   ├── migrations/
+│   │   └── test_*.py            # Testes
+│   ├── templates/               # Templates HTML
+│   ├── static/                  # Arquivos estáticos
 │   ├── manage.py
-│   ├── pytest.ini              # ✅ Configuração de testes
-│   └── env/                    # Ambiente virtual
-├── requirements.txt            # ✅ Dependências
-├── docker-compose.yml          # ✅ Docker PostgreSQL
-└── README.md                   # Este arquivo
+│   └── pytest.ini               # Configuração de testes
+├── requirements.txt             # Dependências
+├── Dockerfile                   # Imagem da aplicação
+├── docker-compose.yml           # PostgreSQL + API + Cron
+├── .env.example                 # Modelo de variáveis de ambiente
+└── README.md                    # Este arquivo
 ```
 
 ---
 
 ## 🧪 Testes
 
-### Executar Testes
+Os testes usam `pytest` + `pytest-django` (configuração em `agendinha/pytest.ini`).
 
 ```bash
+# A partir do diretório agendinha/
+cd agendinha
+
 # Todos os testes
 pytest
 
@@ -279,45 +285,23 @@ pytest restfull/test_auth.py
 pytest restfull/test_patients.py
 pytest restfull/test_appointments.py
 pytest restfull/test_notifications.py
-
-# Com cobertura
-pytest --cov=restfull --cov-report=html
 ```
-
-### Testes Implementados
-
-- ✅ Autenticação (login, registro, JWT)
-- ✅ Pacientes (CRUD completo)
-- ✅ Agendamentos (CRUD completo)
-- ✅ Notificações (criação automática, marcação como lida)
 
 ---
 
 ## 🐳 Docker
 
-### Usando Docker Compose
+O `docker-compose.yml` define três serviços: `postgres`, `api` e `cron`.
 
 ```bash
-# Subir PostgreSQL
+# Subir todos os serviços
 docker-compose up -d
 
-# Parar PostgreSQL
+# Parar os serviços
 docker-compose down
 ```
 
-### Configuração do Docker
-
-```yaml
-services:
-  postgres:
-    image: postgres:14
-    environment:
-      POSTGRES_DB: graacc_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-```
+As variáveis de ambiente são lidas do arquivo `.env` (veja `.env.example`).
 
 ---
 
@@ -326,7 +310,7 @@ services:
 ### 1. Registrar Administrador
 
 ```bash
-curl -X POST http://localhost:8000/graacc/api/admin/registrar \
+curl -X POST http://localhost:8000/agendinha/api/admin/registrar \
   -H "Content-Type: application/json" \
   -d '{
     "nome": "Admin Teste",
@@ -338,31 +322,30 @@ curl -X POST http://localhost:8000/graacc/api/admin/registrar \
 ### 2. Login e Obter Token
 
 ```bash
-curl -X POST http://localhost:8000/graacc/api/admin/login \
+curl -X POST http://localhost:8000/agendinha/api/admin/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "admin@teste.com",
     "senha": "senha123"
   }'
-
-# Response: {"nome": "Admin Teste", "token": "eyJhbGciOi..."}
 ```
 
-### 3. Criar Paciente
+### 3. Criar Responsável
 
 ```bash
-curl -X POST http://localhost:8000/graacc/api/pacientes/create \
+curl -X POST http://localhost:8000/agendinha/api/responsaveis/create \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer SEU_TOKEN" \
   -d '{
-    "nome": "João Silva"
+    "nome": "João Silva",
+    "telefone": "11999999999"
   }'
 ```
 
 ### 4. Criar Agendamento
 
 ```bash
-curl -X POST http://localhost:8000/graacc/api/agendamentos/create \
+curl -X POST http://localhost:8000/agendinha/api/agendamentos/create \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer SEU_TOKEN" \
   -d '{
@@ -374,211 +357,75 @@ curl -X POST http://localhost:8000/graacc/api/agendamentos/create \
   }'
 ```
 
-### 5. Listar Notificações Não Lidas
-
-```bash
-curl -X POST http://localhost:8000/graacc/api/notificacoes/naoLidas \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer SEU_TOKEN" \
-  -d '[
-    {
-      "id_agendamento": 1,
-      "data_agendamento": "25/12/2025 14:30"
-    }
-  ]'
-```
-
 ---
 
 ## 🛠️ Tecnologias Utilizadas
 
 ### Backend
-- **Django 5.2.8** - Framework web
-- **Django REST Framework 3.15.2** - API RESTful
-- **djangorestframework-simplejwt 5.3.1** - JWT
-- **PyJWT 2.10.1** - JWT customizado
+- **Django 5.2.8** / **Django REST Framework 3.15.2**
+- **djangorestframework-simplejwt 5.3.1** / **PyJWT 2.10.1**
 
 ### Banco de Dados
-- **PostgreSQL 14+** - Banco de dados
-- **psycopg2-binary 2.9.10** - Driver PostgreSQL
+- **PostgreSQL** / **psycopg2-binary 2.9.10**
 
 ### Documentação
-- **drf-spectacular 0.27.2** - OpenAPI/Swagger
+- **drf-spectacular 0.27.2** (OpenAPI/Swagger)
 
 ### Segurança
-- **bcrypt 4.2.1** - Criptografia de senhas
-- **django-cors-headers 4.5.0** - CORS
+- **bcrypt 4.2.1** / **django-cors-headers 4.5.0**
+
+### Integrações
+- **django-allauth 65.14.3** + **google-auth** / **google-api-python-client** (Google OAuth2 e Calendar)
+- **pywebpush 2.3.0** (Web Push / VAPID)
 
 ### Testes
-- **pytest 8.3.4** - Framework de testes
-- **pytest-django** - Testes Django
-
-### Utilitários
-- **python-dotenv 1.0.1** - Variáveis de ambiente
-- **inflection 0.5.1** - Conversão de strings
-
----
-
-## 🔄 Migração dos Microserviços Java
-
-### Compatibilidade 100%
-
-| Aspecto | Java Spring Boot | Django | Status |
-|---------|------------------|--------|--------|
-| Endpoints | 32 | 32 | ✅ 100% |
-| Autenticação | JWT customizado | JWT customizado | ✅ Compatível |
-| Criptografia | BCrypt | BCrypt | ✅ Compatível |
-| Formato de Data | dd/MM/yyyy HH:mm | dd/MM/yyyy HH:mm | ✅ Idêntico |
-| Roles | ADMIN, USER | ADMIN, USER | ✅ Idêntico |
-| Claims JWT | 6 claims | 6 claims | ✅ Idêntico |
-| Status Codes | HTTP padrão | HTTP padrão | ✅ Idêntico |
-| Mensagens de Erro | Customizadas | Customizadas | ✅ Idênticas |
-
-### Funcionalidades Migradas
-
-✅ **Microserviço de Usuários (13 endpoints)**
-- Registro de usuário e admin
-- Login com JWT
-- Confirmação de cadastro
-- CRUD de usuários
-
-✅ **Microserviço de Agendamentos (12 endpoints)**
-- CRUD de pacientes
-- CRUD de agendamentos
-- Busca de pacientes
-- Listagem por usuário
-
-✅ **Microserviço de Notificações (6 endpoints)**
-- Criação automática (7d, 3d, 1d, 4h antes)
-- Criação em lote
-- Listagem de não lidas
-- Marcação como lida
-
-✅ **API Orquestrador**
-- Funcionalidade integrada diretamente (não necessário como gateway separado)
-
----
-
-## 📈 Funcionalidades Especiais
-
-### Notificações Automáticas
-
-Ao criar um agendamento, o sistema gera automaticamente 4 notificações:
-
-- 📅 **7 dias** antes do agendamento
-- 📅 **3 dias** antes do agendamento
-- 📅 **1 dia** antes do agendamento
-- ⏰ **4 horas** antes do agendamento
-
-**Regra:** Apenas notificações com data futura são criadas.
-
-### Formato de Data
-
-**Entrada e Saída:** `dd/MM/yyyy HH:mm`
-
-Exemplo: `25/12/2025 14:30`
-
-### Transações Atômicas
-
-Todas as operações de escrita usam `@transaction.atomic` para garantir consistência.
-
-### Validações
-
-- ✅ Email único
-- ✅ Paciente deve existir antes de criar usuário/agendamento
-- ✅ Formato de data validado
-- ✅ Campos obrigatórios
-- ✅ Permissões por role
+- **pytest-django 4.9.0**
 
 ---
 
 ## 📚 Documentação Adicional
 
-### Swagger/OpenAPI
-
-Acesse a documentação interativa em:
-
-```
-http://localhost:8000/api/schema/swagger-ui/
-```
-
-### Redoc
-
-Documentação alternativa:
-
-```
-http://localhost:8000/api/schema/redoc/
-```
-
-### OpenAPI Schema JSON
-
-```
-http://localhost:8000/api/schema/
-```
+| Recurso | URL |
+|---------|-----|
+| Swagger UI | `http://localhost:8000/api/docs/` |
+| ReDoc | `http://localhost:8000/api/redoc/` |
+| OpenAPI Schema | `http://localhost:8000/api/schema/` |
 
 ---
 
 ## 🤝 Contribuindo
 
-### Desenvolvimento
-
 ```bash
-# 1. Clone e configure o ambiente
-git clone https://github.com/UnifespCodeLab/graacc-backend-simple.git
-cd graacc-backend-simple/graac_backend
-
-# 2. Crie uma branch para sua feature
+# 1. Crie uma branch para sua feature
 git checkout -b feature/minha-feature
 
-# 3. Faça suas alterações e teste
-pytest
+# 2. Faça suas alterações e teste
+cd agendinha && pytest
 
-# 4. Commit e push
+# 3. Commit e push
 git add .
 git commit -m "feat: adiciona minha feature"
 git push origin feature/minha-feature
 
-# 5. Abra um Pull Request
+# 4. Abra um Pull Request
 ```
 
 ### Padrões de Código
 
 - **PEP 8** para Python
-- **Docstrings** em todas as funções
-- **Type hints** quando possível
+- **Docstrings** em funções relevantes
 - **Testes** para novas funcionalidades
 
 ---
 
 ## 📞 Suporte e Contato
 
-**Projeto:** GRAACC Agendinha  
-**Organização:** UnifespCodeLab  
-**Repositório:** https://github.com/UnifespCodeLab/graacc-backend-simple
+**Projeto:** Agendinha
+**Organização:** UnifespCodeLab
+**Repositório:** https://github.com/UnifespCodeLab/agendinha-backend-simple
 
 ---
 
 ## 📄 Licença
 
-Este projeto é mantido pela UnifespCodeLab para o GRAACC.
-
----
-
-## 🎯 Roadmap Futuro
-
-### Próximas Funcionalidades
-
-- [ ] Sistema de notificações por email/SMS
-- [ ] Upload de arquivos/documentos
-- [ ] Relatórios e dashboards
-- [ ] Integração com calendário
-- [ ] App mobile (React Native)
-- [ ] Deploy em produção
-- [ ] CI/CD com GitHub Actions
-- [ ] Monitoramento e logs
-
----
-
-**Versão:** 1.0.0  
-**Data de Conclusão:** 19/11/2025  
-**Status:** ✅ PRODUÇÃO READY
+Este projeto é mantido pela UnifespCodeLab.

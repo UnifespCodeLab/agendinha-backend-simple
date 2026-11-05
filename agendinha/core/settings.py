@@ -38,7 +38,6 @@ GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = os.getenv('GOOGLE_CLIENT_SECRET')
 GOOGLE_TOKEN_URI = os.getenv('GOOGLE_TOKEN_URI')
 FRONTEND_URL = os.getenv('FRONTEND_URL', "http://localhost:3000")
-SECRET_KEY = "agendinha"
 
 # SMTP Server
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
