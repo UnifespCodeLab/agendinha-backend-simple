@@ -271,7 +271,9 @@ agendinha-backend-simple/
 
 ## 🧪 Testes
 
-Os testes usam `pytest` + `pytest-django` (configuração em `agendinha/pytest.ini`).
+Os testes usam `pytest` + `pytest-django` (configuração em `agendinha/pytest.ini`)
+e ficam em `agendinha/restfull/tests/`. Veja detalhes em
+[`agendinha/restfull/tests/README.md`](agendinha/restfull/tests/README.md).
 
 ```bash
 # A partir do diretório agendinha/
@@ -281,11 +283,16 @@ cd agendinha
 pytest
 
 # Testes específicos
-pytest restfull/test_auth.py
-pytest restfull/test_patients.py
-pytest restfull/test_appointments.py
-pytest restfull/test_notifications.py
+pytest restfull/tests/test_auth.py
+pytest restfull/tests/test_patients.py
+pytest restfull/tests/test_appointments.py
+pytest restfull/tests/test_notifications.py
 ```
+
+> ⚠️ A suíte está desatualizada em relação ao modelo de dados atual
+> (`Responsavel` em vez de `Paciente`) e no momento não passa. A reorganização
+> em `tests/` foi apenas estrutural; a atualização dos testes está documentada
+> como follow-up no README da pasta de testes.
 
 ---
 

@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework import status
-from .models import Agendamento
+from ..models import Agendamento
 
 
 @pytest.mark.django_db

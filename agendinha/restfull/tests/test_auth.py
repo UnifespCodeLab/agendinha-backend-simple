@@ -5,7 +5,7 @@ Testes de Autenticação - Usuários e Administradores
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from .models import Usuario, Paciente, Role
+from ..models import Usuario, Paciente, Role
 
 
 @pytest.mark.django_db
@@ -148,7 +148,7 @@ class TestUserOperations:
         assert not user_not_confirmed.cadastro_confirmado
         
         # Precisa criar novo cliente autenticado para o usuário não confirmado
-        from .conftest import user_token
+        from ..tests.conftest import user_token
         import jwt
         from django.conf import settings
         from django.utils import timezone
