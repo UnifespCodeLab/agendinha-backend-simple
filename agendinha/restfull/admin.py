@@ -19,5 +19,5 @@ class AgendamentoAdmin(admin.ModelAdmin):
 
 @admin.register(Notificacao)
 class NotificacaoAdmin(admin.ModelAdmin):
-    list_display = ('id_agendamento', 'data', 'lida')
+    list_display = ('data', 'lida')
     list_filter = ('lida', 'data')

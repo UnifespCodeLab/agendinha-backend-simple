@@ -2,16 +2,16 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from ..permissions import IsAdminOrUser
 from ..serializers.appointment import AppointmentRequestSerializer, AppointmentSerializer
-from ..models import Usuario, Agendamento
+from ..models import Usuario, Agendamento, Notificacao
 from .utils import convert_to_iso
 from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
 from datetime import datetime, timedelta
-from django.utils.timezone import make_aware
-from django.utils.timezone import make_aware
+from django.utils.timezone import make_aware, now
 from google_auth_oauthlib.flow import InstalledAppFlow
+from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from ..permissions import IsAdmin, IsAdminOrUser, IsUser
@@ -89,6 +89,7 @@ def appointment_export_task_to_google_calendar(request):
 )
 @api_view(['POST'])
 @permission_classes([IsAdmin])
+@transaction.atomic
 def appointment_create(request):
     """
     POST /agendamentos
@@ -122,15 +123,26 @@ def appointment_create(request):
     
     # Cria agendamento
     try:
+        data = serializer.validated_data
         agendamento = Agendamento(
-            titulo=serializer.validated_data['titulo'],
-            descricao=serializer.validated_data.get('descricao', ''),
+            titulo=data['titulo'],
+            descricao=data.get('descricao', ''),
             data=data_agendamento,
-            local=serializer.validated_data['local'],
+            local=data['local'],
             usuario=user,
-            medico=serializer.validated_data.get('medico', '')
+            medico=data.get('medico', '')
         )
         agendamento.save()
+
+        notification = Notificacao(
+            agendamento=agendamento,
+            lida=False,
+            usuario=user,
+            data=now(),
+            titulo=data['titulo'],
+            descricao=f"{data.get('descricao', '')} {data_agendamento}",
+        )
+        notification.save()
         
         return Response(
             AppointmentSerializer(agendamento).data,

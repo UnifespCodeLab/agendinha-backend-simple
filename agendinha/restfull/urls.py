@@ -44,11 +44,12 @@ urlpatterns = [
     # Nota: PUT e DELETE para /usuarios serão tratados na mesma view com método HTTP
 
     # ========================================================================
-    # AUTENTICAÇÃO - ADMIN
+    # ADMIN
     # ========================================================================
     path('admin/registrar', admin.admin_register, name='admin-register'),
     path('admin/usuarios/registrar', admin.user_register, name='admin-user-register'),
     path('admin/login', admin.admin_login, name='admin-login'),
+    path('admin/usuarios', admin.user_list, name='admin-user-list'),
 
     # ========================================================================
     # RESPONSÁVEIS

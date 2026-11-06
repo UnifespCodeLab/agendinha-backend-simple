@@ -159,8 +159,15 @@ class Notificacao(models.Model):
     Model de Notificação
     """
     id_notificacao = models.BigAutoField(primary_key=True)
-    id_agendamento = models.BigIntegerField()
-    data = models.DateTimeField()
+    agendamento = models.ForeignKey(
+        Agendamento,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_column='id_agendamento',
+        related_name='notificacoes'
+    )
+    data = models.DateTimeField(null=True, blank=True)
     lida = models.BooleanField(default=False)
     titulo = models.TextField(null=True, blank=True)
     descricao = models.TextField(null=True, blank=True)
@@ -178,22 +185,24 @@ class Notificacao(models.Model):
         verbose_name = 'Notificação'
         verbose_name_plural = 'Notificações'
         indexes = [
-            models.Index(fields=['id_agendamento']),
+            models.Index(fields=['agendamento']),
             models.Index(fields=['data']),
             models.Index(fields=['lida']),
         ]
         ordering = ['data']
 
     def __str__(self):
-        return f"Notificação {self.id_notificacao} - Agendamento {self.id_agendamento}"
+        return f"Notificação {self.id_notificacao} - Agendamento {self.agendamento_id}"
+
 
 class PushSubscription(models.Model):
     usuario = models.ForeignKey(
-        Usuario, 
-        on_delete=models.SET_NULL,
+        Usuario,
+        on_delete=models.CASCADE,
         null=True,
         blank=True,
         db_column='id_usuario',
+        related_name='push_subscriptions',
     )
     endpoint = models.URLField(max_length=255)
     p256dh = models.CharField(max_length=255)
