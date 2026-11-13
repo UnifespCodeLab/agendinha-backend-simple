@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework import status
-from .models import Agendamento
+from ..models import Agendamento
 
 
 @pytest.mark.django_db
@@ -23,7 +23,7 @@ class TestAppointmentCreate:
             'titulo': 'Consulta Teste',
             'descricao': 'Descrição da consulta',
             'data': future_date,
-            'local': 'Hospital GRAACC',
+            'local': 'Hospital Agendinha',
             'nome_completo_paciente': paciente.nome
         }
         

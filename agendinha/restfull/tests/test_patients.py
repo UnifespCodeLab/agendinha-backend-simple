@@ -5,7 +5,7 @@ Testes de endpoints de Pacientes
 import pytest
 from django.urls import reverse
 from rest_framework import status
-from .models import Paciente
+from ..models import Paciente
 
 
 @pytest.mark.django_db

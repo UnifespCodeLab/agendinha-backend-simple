@@ -6,7 +6,7 @@ import pytest
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.test import APIClient
-from .models import Usuario, Paciente, Agendamento, Notificacao, Role
+from ..models import Usuario, Paciente, Agendamento, Notificacao, Role
 import jwt
 from django.conf import settings
 

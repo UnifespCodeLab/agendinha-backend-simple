@@ -23,7 +23,7 @@ WORKDIR /app/agendinha
 RUN echo '#!/bin/bash\n\
 # Exporta variáveis de ambiente para serem usadas pelo cron\n\
 printenv | grep -v "no_proxy" > /etc/environment\n\
-echo "$REMINDER_CRON_SCHEDULE root . /etc/environment; cd /app/graac_backend && python3 manage.py send_reminders >> /var/log/cron.log 2>&1" > /etc/cron.d/whatsapp-cron\n\
+echo "$REMINDER_CRON_SCHEDULE root . /etc/environment; cd /app/agendinha && python3 manage.py send_reminders >> /var/log/cron.log 2>&1" > /etc/cron.d/whatsapp-cron\n\
 chmod 0644 /etc/cron.d/whatsapp-cron\n\
 touch /var/log/cron.log\n\
 service cron start && tail -f /var/log/cron.log' > /app/start-cron.sh && chmod +x /app/start-cron.sh

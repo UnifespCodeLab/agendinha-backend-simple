@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework import status
-from .models import Notificacao
+from ..models import Notificacao
 
 
 @pytest.mark.django_db

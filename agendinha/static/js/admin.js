@@ -1,5 +1,5 @@
 async function adminLogin(email, senha, csrftoken) {
-    const response = await fetch("/graacc/api/admin/login", 
+    const response = await fetch("/agendinha/api/admin/login", 
     {
         method: "POST",
         headers: {

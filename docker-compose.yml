@@ -14,7 +14,7 @@ services:
 
   api:
     build: .
-    working_dir: /app/graacc_backend
+    working_dir: /app/agendinha
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
