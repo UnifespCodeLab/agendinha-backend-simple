@@ -1,17 +1,19 @@
 from ..models import Usuario, Role
 from django.db import transaction
 from .utils import generate_custom_jwt
-from ..serializers.admin import AdminRegisterSerializer, AdminUserRegisterSerializer
+from ..serializers.admin import AdminRegisterSerializer, AdminUserRegisterSerializer, AdminUserListSerializer
 from ..serializers.user import UserLoginSerializer, UserLoginResponseSerializer
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from ..permissions import IsAdmin
+from django.db.models import Q
 from django.template.loader import render_to_string
 
 # ============================================================================
@@ -159,3 +161,53 @@ def user_register_email_confirm(user: Usuario) -> None:
     msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [user.email])
     msg.attach_alternative(html_message, "text/html")
     msg.send()
+
+
+class UserListPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 100
+
+
+@extend_schema(
+    tags=['Gerenciamento - Admin'],
+    summary='Listar usuários',
+    description='Lista todos os usuários cadastrados, com paginação, busca e filtros opcionais',
+    parameters=[
+        OpenApiParameter('search', OpenApiTypes.STR, description='Busca por nome, email ou CPF'),
+        OpenApiParameter('role', OpenApiTypes.STR, enum=['ROLE_USER', 'ROLE_ADMIN']),
+        OpenApiParameter('cadastro_confirmado', OpenApiTypes.BOOL),
+        OpenApiParameter('page', OpenApiTypes.INT),
+        OpenApiParameter('page_size', OpenApiTypes.INT),
+    ],
+    responses={200: AdminUserListSerializer(many=True)},
+)
+@api_view(['GET'])
+@permission_classes([IsAdmin])
+def user_list(request):
+    """
+    GET /usuarios
+    Lista todos os usuários (ADMIN apenas)
+    """
+    queryset = Usuario.objects.all().order_by('nome', 'id_usuario')
+
+    search = request.query_params.get('search')
+    if search:
+        queryset = queryset.filter(
+            Q(nome__icontains=search) |
+            Q(email__icontains=search) |
+            Q(cpf__icontains=search)
+        )
+
+    role = request.query_params.get('role')
+    if role in Role.values:
+        queryset = queryset.filter(role=role)
+
+    confirmado = request.query_params.get('cadastro_confirmado')
+    if confirmado is not None:
+        queryset = queryset.filter(cadastro_confirmado=confirmado.lower() in ('true', '1'))
+
+    paginator = UserListPagination()
+    page = paginator.paginate_queryset(queryset, request)
+    serializer = AdminUserListSerializer(page, many=True, context={'request': request})
+    return paginator.get_paginated_response(serializer.data)

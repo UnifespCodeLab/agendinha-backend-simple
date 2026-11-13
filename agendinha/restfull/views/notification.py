@@ -1,9 +1,9 @@
 
-from ..models import Notificacao, Usuario
+from ..models import Notificacao, Usuario, Agendamento
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from ..permissions import IsAdmin, IsAdminOrUser
 from ..serializers.appointment import AppointmentInfoSerializer
-from ..serializers.notification import NotificationSerializer
+from ..serializers.notification import NotificationSerializer, NotificationRegisterSerializer
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -21,8 +21,8 @@ from .subscription import send_push
     tags=['Notificações'],
     summary='Criar notificações',
     description='Cria notificações automáticas para um agendamento (1 semana, 3 dias, 1 dia e 4 horas antes)',
-    request=AppointmentInfoSerializer,
-    responses={200: NotificationSerializer(many=True), 204: None, 400: OpenApiTypes.OBJECT},
+    request=NotificationRegisterSerializer,
+    responses={200: NotificationSerializer(), 204: None, 400: OpenApiTypes.OBJECT},
 )
 @api_view(['POST'])
 @permission_classes([IsAdmin])
@@ -30,64 +30,60 @@ from .subscription import send_push
 def notification_create(request):
     """
     POST /notificacoes
-    Cria notificações para um agendamento (ADMIN apenas)
+    Cria notificação (ADMIN apenas)
     Migrado de: NotificationController.registerNotifications()
     """
-    serializer = AppointmentInfoSerializer(data=request.data)
+    serializer = NotificationRegisterSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     assert isinstance(serializer.validated_data, dict)
-    # Converte data string para datetime
-    try:
-        data_agendamento = datetime.strptime(
-            serializer.validated_data['data_agendamento'],
-            '%d/%m/%Y %H:%M'
-        )
-        # Torna timezone-aware
-        data_agendamento = timezone.make_aware(data_agendamento)
-    except ValueError:
-        return Response(
-            {"message": "Formato de data inválido. Use dd/MM/yyyy HH:mm"},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Gera datas das notificações
-    notification_dates = [
-        data_agendamento - timedelta(weeks=1),      # 1 semana antes
-        data_agendamento - timedelta(days=3),       # 3 dias antes
-        data_agendamento - timedelta(days=1),       # 1 dia antes
-        data_agendamento - timedelta(hours=4),      # 4 horas antes
-    ]
-    
-    # Filtra apenas datas futuras
-    now = timezone.now()
-    future_dates = [d for d in notification_dates if d > now]
-    
-    if not future_dates:
-        return Response(status=status.HTTP_204_NO_CONTENT)
-    
-    user = Usuario.objects.get(id_usuario=serializer.validated_data['id_usuario'])
 
-    # Cria notificações
-    notifications = []
-    for data in future_dates:
-        notificacao = Notificacao(
-            id_agendamento=serializer.validated_data['id_agendamento'],
-            data=data,
+    data = serializer.validated_data
+
+    user = None
+    agendamento = None
+
+    if 'id_agendamento' in data:
+        agendamento = Agendamento.objects.get(id_usuario=data['id_agendamento'])
+
+    if 'id_usuario' in data:
+        user = Usuario.objects.get(id_usuario=data['id_usuario'])
+        notification = Notificacao(
+            agendamento=agendamento,
             lida=False,
-            user=user,
-            titulo=serializer.validated_data['titulo'],
-            descricao=serializer.validated_data['descricao'],
+            usuario=user,
+            data=timezone.now(),
+            titulo=data['titulo'],
+            descricao=data['descricao'],
         )
-        notificacao.save()
-        notifications.append(notificacao)
+        notification.save()
+        #send_push(user.id_usuario, "Notificação", "Novo agendamento marcado.")
+        response_serializer = NotificationSerializer(notification)
+        return Response(response_serializer.data, status=status.HTTP_200_OK)
 
-        send_push(user.id_usuario, "Notificação", "Novo agendamento marcado.")
+    user_ids = list(
+        Usuario.objects.filter(cadastro_confirmado=True)
+        .values_list('id_usuario', flat=True)
+    )
+    Notificacao.objects.bulk_create(
+        [
+            Notificacao(
+                usuario_id=uid,
+                agendamento=None,
+                data=timezone.now(),
+                lida=False,
+                titulo=data['titulo'],
+                descricao=data['descricao'],
+            )
+            for uid in user_ids
+        ],
+        batch_size=500,
+    )
+    #transaction.on_commit(
+    #    lambda: send_push_broadcast(user_ids, data['titulo'], data['descricao'])
+    #)
+    return Response({'enviadas': len(user_ids)}, status=status.HTTP_201_CREATED)
     
-    response_serializer = NotificationSerializer(notifications, many=True)
-    return Response(response_serializer.data, status=status.HTTP_200_OK)
-
-
 @extend_schema(
     tags=['Notificações'],
     summary='Criar notificações em lote',
