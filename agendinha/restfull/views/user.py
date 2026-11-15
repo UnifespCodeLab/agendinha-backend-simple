@@ -79,13 +79,6 @@ def user_register(request):
 
     assert isinstance(serializer.validated_data, dict)
     
-    # Verifica se CPF já está cadastrado
-    if not Usuario.objects.filter(cpf=serializer.validated_data['cpf']):
-        return Response(
-            {"message": "CPF não está pré-cadastrado."},
-            status=status.HTTP_401_UNAUTHORIZED
-        )
-    
     if Usuario.objects.filter(email=serializer.validated_data['email']):
         return Response(
             {"message": "E-mail já está cadastrado."},
@@ -93,15 +86,16 @@ def user_register(request):
         )
     
     # Atualiza pré-cadastro do usuário
+    data = serializer.validated_data
     try:
-        user = Usuario.objects.get(cpf=serializer.validated_data['cpf'])
+        user = Usuario.objects.get(email=data['email'])
         if user.cadastro_confirmado:
             return Response(
                 {"message": "Usuário já está cadastrado."},
                 status=status.HTTP_401_UNAUTHORIZED
             )
-        user.email = serializer.validated_data['email']
-        user.set_password(serializer.validated_data['senha'])
+        user.email = data['email']
+        user.set_password(data['senha'])
         user.save()
         return Response(status=status.HTTP_200_OK)
     except Exception as e:

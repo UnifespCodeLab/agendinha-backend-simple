@@ -11,7 +11,7 @@ class UserRegisterSerializer(serializers.Serializer):
     Serializer para registro de usuário comum
     Migrado de: UserRegisterRequestDTO
     """
-    cpf = serializers.CharField(max_length=255)
+    telefone = serializers.CharField(max_length=12)
     email = serializers.EmailField()
     senha = serializers.CharField(write_only=True, style={'input_type': 'password'})
 

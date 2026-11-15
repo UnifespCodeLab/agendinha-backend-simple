@@ -127,22 +127,23 @@ def user_register(request):
 
     assert isinstance(serializer.validated_data, dict)
 
-    # Verifica se CPF já existe
-    if Usuario.objects.filter(cpf=serializer.validated_data['cpf']).exists():
+    # Verifica se telefone já existe
+    if Usuario.objects.filter(telefone=serializer.validated_data['telefone']).exists():
         return Response(
-            {"message": "CPF já foi cadastrado"},
+            {"message": "Já existe um usuário com o telefone requisitado."},
             status=status.HTTP_400_BAD_REQUEST
         )
     
     # Cria usuário
     try:
         with transaction.atomic():
+            data = serializer.validated_data
             user = Usuario(
-                cpf=serializer.validated_data['cpf'],
-                nome=serializer.validated_data['nome'],
-                email=serializer.validated_data['email'],
+                telefone=data['telefone'],
+                nome=data['nome'],
+                email=data['email'],
             )
-            user.set_password(serializer.validated_data['senha'])
+            user.set_password(data['senha'])
             user.save()
             user_register_email_confirm(user)
         return Response(status=status.HTTP_200_OK)
@@ -174,7 +175,7 @@ class UserListPagination(PageNumberPagination):
     summary='Listar usuários',
     description='Lista todos os usuários cadastrados, com paginação, busca e filtros opcionais',
     parameters=[
-        OpenApiParameter('search', OpenApiTypes.STR, description='Busca por nome, email ou CPF'),
+        OpenApiParameter('search', OpenApiTypes.STR, description='Busca por nome, email ou telefone'),
         OpenApiParameter('role', OpenApiTypes.STR, enum=['ROLE_USER', 'ROLE_ADMIN']),
         OpenApiParameter('cadastro_confirmado', OpenApiTypes.BOOL),
         OpenApiParameter('page', OpenApiTypes.INT),
@@ -196,7 +197,7 @@ def user_list(request):
         queryset = queryset.filter(
             Q(nome__icontains=search) |
             Q(email__icontains=search) |
-            Q(cpf__icontains=search)
+            Q(telefone__icontains=search)
         )
 
     role = request.query_params.get('role')
