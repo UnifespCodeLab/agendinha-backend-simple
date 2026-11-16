@@ -1,20 +1,17 @@
 from ..models import Usuario, Role
 from django.db import transaction
 from .utils import generate_custom_jwt
-from ..serializers.admin import AdminRegisterSerializer, AdminUserRegisterSerializer, AdminUserListSerializer
+from ..serializers.admin import AdminRegisterSerializer
 from ..serializers.user import UserLoginSerializer, UserLoginResponseSerializer
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from ..permissions import IsAdmin
-from django.db.models import Q
-from django.template.loader import render_to_string
 
 # ============================================================================
 # VIEWS DE AUTENTICAÇÃO - ADMIN
@@ -106,109 +103,3 @@ def admin_login(request):
     }
     
     return Response(response_data, status=status.HTTP_200_OK)
-
-@extend_schema(
-    tags=['Gerenciamento - Admin'],
-    summary='Criar usuário',
-    description='Realiza a criação de usuário',
-    request=AdminUserRegisterSerializer,
-)
-@api_view(['POST'])
-@permission_classes([IsAdmin])
-def user_register(request):
-    """
-    POST /usuarios/registrar
-    Registra usuário comum
-    Migrado de: UserController.addUser()
-    """
-    serializer = AdminUserRegisterSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    assert isinstance(serializer.validated_data, dict)
-
-    # Verifica se telefone já existe
-    if Usuario.objects.filter(telefone=serializer.validated_data['telefone']).exists():
-        return Response(
-            {"message": "Já existe um usuário com o telefone requisitado."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-    # Cria usuário
-    try:
-        with transaction.atomic():
-            data = serializer.validated_data
-            user = Usuario(
-                telefone=data['telefone'],
-                nome=data['nome'],
-                email=data['email'],
-            )
-            user.set_password(data['senha'])
-            user.save()
-            user_register_email_confirm(user)
-        return Response(status=status.HTTP_200_OK)
-    except Exception as e:
-        return Response(
-            {"message": "Erro ao cadastrar usuario.", "error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-
-def user_register_email_confirm(user: Usuario) -> None:
-    token = user.make_token()
-    reset_link = f"{settings.FRONTEND_URL}/conta/{user.id_usuario}/{token}"
-    subject = settings.EMAIL_SUBJECT_REGISTER_USER
-    text_content = settings.EMAIL_TEXT_CONTENT_REGISTER_USER
-    html_message = render_to_string('confirm_account_email.html', {'nome': user.nome, 'reset_link': reset_link })
-    msg = EmailMultiAlternatives(subject, text_content, settings.EMAIL_HOST_USER, [user.email])
-    msg.attach_alternative(html_message, "text/html")
-    msg.send()
-
-
-class UserListPagination(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = 'page_size'
-    max_page_size = 100
-
-
-@extend_schema(
-    tags=['Gerenciamento - Admin'],
-    summary='Listar usuários',
-    description='Lista todos os usuários cadastrados, com paginação, busca e filtros opcionais',
-    parameters=[
-        OpenApiParameter('search', OpenApiTypes.STR, description='Busca por nome, email ou telefone'),
-        OpenApiParameter('role', OpenApiTypes.STR, enum=['ROLE_USER', 'ROLE_ADMIN']),
-        OpenApiParameter('cadastro_confirmado', OpenApiTypes.BOOL),
-        OpenApiParameter('page', OpenApiTypes.INT),
-        OpenApiParameter('page_size', OpenApiTypes.INT),
-    ],
-    responses={200: AdminUserListSerializer(many=True)},
-)
-@api_view(['GET'])
-@permission_classes([IsAdmin])
-def user_list(request):
-    """
-    GET /usuarios
-    Lista todos os usuários (ADMIN apenas)
-    """
-    queryset = Usuario.objects.all().order_by('nome', 'id_usuario')
-
-    search = request.query_params.get('search')
-    if search:
-        queryset = queryset.filter(
-            Q(nome__icontains=search) |
-            Q(email__icontains=search) |
-            Q(telefone__icontains=search)
-        )
-
-    role = request.query_params.get('role')
-    if role in Role.values:
-        queryset = queryset.filter(role=role)
-
-    confirmado = request.query_params.get('cadastro_confirmado')
-    if confirmado is not None:
-        queryset = queryset.filter(cadastro_confirmado=confirmado.lower() in ('true', '1'))
-
-    paginator = UserListPagination()
-    page = paginator.paginate_queryset(queryset, request)
-    serializer = AdminUserListSerializer(page, many=True, context={'request': request})
-    return paginator.get_paginated_response(serializer.data)

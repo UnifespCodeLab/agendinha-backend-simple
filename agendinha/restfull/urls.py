@@ -47,9 +47,9 @@ urlpatterns = [
     # ADMIN
     # ========================================================================
     path('admin/registrar', admin.admin_register, name='admin-register'),
-    path('admin/usuarios/registrar', admin.user_register, name='admin-user-register'),
+    path('admin/usuarios/registrar', user.user_admin_register, name='admin-user-register'),
     path('admin/login', admin.admin_login, name='admin-login'),
-    path('admin/usuarios', admin.user_list, name='admin-user-list'),
+    path('admin/usuarios', user.user_list, name='admin-user-list'),
 
     # ========================================================================
     # RESPONSÁVEIS

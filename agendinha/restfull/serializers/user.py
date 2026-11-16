@@ -5,6 +5,11 @@ from ..utils import is_number
 # ============================================================================
 # SERIALIZERS DE USUÁRIOS
 # ============================================================================
+class CleanImageField(serializers.ImageField):
+    def to_representation(self, value):
+        if not value:
+            return None
+        return value.url.lstrip('/')
 
 class UserRegisterSerializer(serializers.Serializer):
     """
@@ -86,6 +91,7 @@ class UserSerializer(serializers.ModelSerializer):
     Migrado de: UserDTO
     """
     id_usuario = serializers.IntegerField(read_only=True)
+    foto_perfil = CleanImageField(required=False, allow_null=True)
     
     class Meta:
         model = Usuario
