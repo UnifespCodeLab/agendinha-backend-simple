@@ -695,7 +695,7 @@ def user_admin_register(request):
     if Usuario.objects.filter(telefone=serializer.validated_data['telefone']).exists():
         return Response(
             {"message": "Já existe um usuário com o telefone requisitado."},
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_401_UNAUTHORIZED
         )
     
     # Cria usuário

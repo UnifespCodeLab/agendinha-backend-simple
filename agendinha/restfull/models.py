@@ -19,6 +19,12 @@ class Responsavel(models.Model):
     id_responsavel = models.BigAutoField(primary_key=True)
     nome = models.CharField(max_length=255)
     telefone = models.CharField(max_length=20, unique=True, blank=True)
+    email = models.EmailField()
+
+    class Meta:
+        db_table = 'responsavel'
+        verbose_name = 'Responsável'
+        verbose_name_plural = 'Responsáveis'
 
 class Usuario(models.Model):
     """
@@ -26,7 +32,7 @@ class Usuario(models.Model):
     """
     id_usuario = models.BigAutoField(primary_key=True)
     nome = models.CharField(max_length=255, blank=True)
-    email = models.EmailField()
+    email = models.EmailField(blank=True, null=True)
     telefone = models.CharField(max_length=11, blank=True, unique=True, null=True)
     senha = models.CharField(max_length=255, blank=True)
     cadastro_confirmado = models.BooleanField(default=False, null=False)

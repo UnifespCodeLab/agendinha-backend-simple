@@ -36,8 +36,15 @@ def guardian_create(request):
     # Verifica se responsável com mesmo nome já existe
     if Responsavel.objects.filter(nome=serializer.validated_data['nome']).exists():
         return Response(
-            {"message": "Responsável ja existe na base de dados."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {"message": "Responsável já existe na base de dados."},
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    # Verifica se responsável com mesmo telefone já existe
+    if Responsavel.objects.filter(telefone=serializer.validated_data['telefone']).exists():
+        return Response(
+            {"message": "Algum responsável já possui esse telefone na base de dados."},
+            status=status.HTTP_401_UNAUTHORIZED
         )
     
     try:
@@ -47,6 +54,7 @@ def guardian_create(request):
             status=status.HTTP_200_OK
         )
     except Exception as e:
+        print(e)
         return Response(
             {"message": "Erro ao salvar responsável."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -149,31 +157,22 @@ def guardian_delete(request, id):
     tags=['Responsáveis'],
     summary='Buscar responsável por nome',
     description='Busca um responsável pelo nome completo',
-    request=GuardianRequestSerializer,
     responses={200: GuardianSerializer, 204: None},
 )
-@api_view(['POST'])
+@api_view(['GET'])
 @permission_classes([AllowAny])
 def guardian_search_by_name(request):
     """
-    POST /responsaveis/pesquisar
+    GET /responsaveis/pesquisar?nome=...
     Busca responsável por nome (público)
     """
-    serializer = GuardianRequestSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    nome = request.GET.get('nome', '')
+    if not nome:
+        return Response([], status=status.HTTP_200_OK)
 
-    assert isinstance(serializer.validated_data, dict)
-
-    try:
-        responsavel = Responsavel.objects.get(nome=serializer.validated_data['nome'])
-        return Response(
-            GuardianSerializer(responsavel).data,
-            status=status.HTTP_200_OK
-        )
-    except Responsavel.DoesNotExist:
-        return Response(status=status.HTTP_204_NO_CONTENT)
-
+    responsaveis = Responsavel.objects.filter(nome__icontains=nome)[:50]
+    serializer = GuardianSerializer(responsaveis, many=True)
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 @extend_schema(
     tags=['Responsáveis'],
