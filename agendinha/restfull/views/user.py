@@ -6,7 +6,10 @@ from ..permissions import IsAdmin, IsAdminOrUser
 from .utils import generate_custom_jwt
 from google.auth.transport import requests as google_requests
 from rest_framework.pagination import PageNumberPagination
-from ..serializers.admin import AdminUserRegisterSerializer, AdminUserListSerializer
+from ..serializers.admin import (
+    AdminUserRegisterSerializer, AdminUserListSerializer,
+    AdminUserUpdateSerializer
+)
 from ..serializers.notification import NotificationSerializer
 from ..serializers.user import (
     UserRegisterSerializer,
@@ -22,7 +25,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework import status
 from django.template.loader import render_to_string
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from rest_framework.parsers import MultiPartParser, FormParser
 from ..utils import is_number
 from django.db.models import Q
@@ -528,7 +531,7 @@ def user_update(request):
             
     except Exception as e:
         return Response(
-            {"message": "Não foi possível atualizar o Usuário."},
+            {"message": "Não foi possível atualizar o usuário."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
@@ -645,8 +648,148 @@ def user_delete(request):
         return Response(status=status.HTTP_200_OK)
     except Exception as e:
         return Response(
-            {"message": "Não existe nenhum usuario com esse id"},
+            {"message": "Não existe nenhum usuário com esse ID."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+@extend_schema(
+    tags=['Gerenciamento - Admin'],
+    summary='Deletar usuário',
+    description='Remove o usuário a partir de um id',
+    request=None,
+    responses={
+        200: None,
+        400: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+        500: OpenApiTypes.OBJECT,
+    },
+)
+@api_view(['DELETE'])
+@permission_classes([IsAdmin])
+def user_admin_delete(request, id):
+    """
+    DELETE /admin/usuarios/<id>/delete
+    Admin remove qualquer usuário pelo id.
+    """
+    # Evita o admin apagar a própria conta por engano
+    if getattr(request.user, 'id_usuario', None) == id:
+        return Response(
+            {"message": "Você não pode apagar o próprio usuário por aqui."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        user = Usuario.objects.get(id_usuario=id)
+    except Usuario.DoesNotExist:
+        return Response(
+            {"message": "Não existe nenhum usuário com esse ID."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    try:
+        user.delete()
+        return Response(status=status.HTTP_200_OK)
+    except Exception:
+        logger.exception("Erro ao deletar usuário %s", id)
+        return Response(
+            {"message": "Não foi possível deletar o usuário."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+@extend_schema(
+    tags=['Gerenciamento - Admin'],
+    summary='Atualizar usuário',
+    description='Atualiza nome, telefone e responsável de um usuário a partir do id',
+    request=AdminUserUpdateSerializer,
+    responses={
+        200: None,
+        400: OpenApiTypes.OBJECT,
+        404: OpenApiTypes.OBJECT,
+        409: OpenApiTypes.OBJECT,
+        500: OpenApiTypes.OBJECT,
+    },
+)
+@api_view(['PUT'])
+@permission_classes([IsAdmin])
+def user_admin_update(request, id):
+    """
+    PUT /admin/usuarios/<id>/update
+    Admin atualiza qualquer usuário.
+ 
+    Regra de contato: usuário COM responsável usa o e-mail do responsável e
+    não tem telefone próprio (telefone é único, então dependentes não podem
+    repeti-lo). Usuário SEM responsável usa e-mail/telefone próprios.
+    """
+    serializer = AdminUserUpdateSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    data = serializer.validated_data
+ 
+    try:
+        user = Usuario.objects.select_related('responsavel').get(id_usuario=id)
+    except Usuario.DoesNotExist:
+        return Response(
+            {"message": "Não existe nenhum usuário com esse ID."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+ 
+    was_linked = user.responsavel_id is not None
+    responsavel = user.responsavel
+    if 'id_responsavel' in data:
+        if data['id_responsavel'] is None:
+            responsavel = None
+        else:
+            try:
+                responsavel = Responsavel.objects.get(id_responsavel=data['id_responsavel'])
+            except Responsavel.DoesNotExist:
+                return Response(
+                    {"message": "Não existe nenhum responsável com esse id."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+ 
+    if 'nome' in data:
+        user.nome = data['nome']
+ 
+    if responsavel:
+        user.email = responsavel.email
+        user.telefone = None
+    else:
+        if 'email' in data:
+            user.email = data['email'] or None
+ 
+        telefone = (data['telefone'] or None) if 'telefone' in data else user.telefone
+ 
+        if was_linked and not telefone:
+            return Response(
+                {"message": "Informe um telefone ao remover o responsável."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+ 
+        if telefone and Usuario.objects.filter(telefone=telefone).exclude(
+            id_usuario=user.id_usuario
+        ).exists():
+            return Response(
+                {"message": "Já existe um usuário com o telefone requisitado."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        user.telefone = telefone
+ 
+    user.responsavel = responsavel
+ 
+    try:
+        with transaction.atomic():
+            user.save()
+        return Response(status=status.HTTP_200_OK)
+    except IntegrityError:
+        return Response(
+            {"message": "Já existe um usuário com o telefone requisitado."},
+            status=status.HTTP_409_CONFLICT,
+        )
+    except Exception:
+        logger.exception("Erro ao atualizar usuário %s", id)
+        return Response(
+            {"message": "Não foi possível atualizar o usuário."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 @extend_schema(
@@ -674,47 +817,76 @@ def user_search_by_name(request):
 @extend_schema(
     tags=['Gerenciamento - Admin'],
     summary='Criar usuário',
-    description='Realiza a criação de usuário',
+    description='Realiza a criação de usuário, opcionalmente vinculado a um responsável',
     request=AdminUserRegisterSerializer,
 )
 @api_view(['POST'])
 @permission_classes([IsAdmin])
 def user_admin_register(request):
     """
-    POST /usuarios/registrar
-    Registra usuário comum
-    Migrado de: UserController.addUser()
+    POST /admin/usuarios/registrar
+    Registra usuário comum (admin). Se houver responsável, o e-mail do
+    usuário é o do responsável e o telefone próprio fica vazio.
     """
     serializer = AdminUserRegisterSerializer(data=request.data)
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    assert isinstance(serializer.validated_data, dict)
-
-    # Verifica se telefone já existe
-    if Usuario.objects.filter(telefone=serializer.validated_data['telefone']).exists():
-        return Response(
-            {"message": "Já existe um usuário com o telefone requisitado."},
-            status=status.HTTP_401_UNAUTHORIZED
-        )
-    
-    # Cria usuário
+ 
+    data = serializer.validated_data
+ 
+    responsavel = None
+    id_responsavel = data.get('id_responsavel')
+    if id_responsavel:
+        try:
+            responsavel = Responsavel.objects.get(id_responsavel=id_responsavel)
+        except Responsavel.DoesNotExist:
+            return Response(
+                {"message": "Não existe nenhum responsável com esse id."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+ 
+    if responsavel:
+        email = responsavel.email
+        telefone = None
+    else:
+        email = data.get('email') or None
+        telefone = data.get('telefone') or None  # '' colidiria com unique=True
+ 
+        if not email or not telefone:
+            return Response(
+                {"message": "E-mail e telefone são obrigatórios para usuários sem responsável."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+ 
+        if Usuario.objects.filter(telefone=telefone).exists():
+            return Response(
+                {"message": "Já existe um usuário com o telefone requisitado."},
+                status=status.HTTP_409_CONFLICT,
+            )
+ 
     try:
         with transaction.atomic():
-            data = serializer.validated_data
             user = Usuario(
-                telefone=data['telefone'],
+                telefone=telefone,
                 nome=data['nome'],
-                email=data['email'],
+                email=email,
+                responsavel=responsavel,
             )
             user.set_password(data['senha'])
             user.save()
-            user_register_email_confirm(user)
+            user_register_email_confirm(user)  # se falhar, o usuário não é criado
         return Response(status=status.HTTP_200_OK)
-    except Exception as e:
+    except IntegrityError:
+        # Corrida entre o exists() acima e o save()
         return Response(
-            {"message": "Erro ao cadastrar usuario.", "error": str(e)},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {"message": "Já existe um usuário com o telefone requisitado."},
+            status=status.HTTP_409_CONFLICT,
+        )
+    except Exception:
+        logger.exception("Erro ao cadastrar usuário")
+        return Response(
+            {"message": "Erro ao cadastrar usuario."},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
 def user_register_email_confirm(user: Usuario) -> None:

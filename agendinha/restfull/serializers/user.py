@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from ..models import Usuario
 from ..utils import is_number
+from .guardian import GuardianSerializer
 
 # ============================================================================
 # SERIALIZERS DE USUÁRIOS
@@ -92,6 +93,7 @@ class UserSerializer(serializers.ModelSerializer):
     """
     id_usuario = serializers.IntegerField(read_only=True)
     foto_perfil = CleanImageField(required=False, allow_null=True)
+    responsavel = GuardianSerializer(read_only=True)
     
     class Meta:
         model = Usuario

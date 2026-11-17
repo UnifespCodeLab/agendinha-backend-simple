@@ -33,7 +33,7 @@ class Usuario(models.Model):
     id_usuario = models.BigAutoField(primary_key=True)
     nome = models.CharField(max_length=255, blank=True)
     email = models.EmailField(blank=True, null=True)
-    telefone = models.CharField(max_length=11, blank=True, unique=True, null=True)
+    telefone = models.CharField(max_length=14, blank=True, unique=True, null=True)
     senha = models.CharField(max_length=255, blank=True)
     cadastro_confirmado = models.BooleanField(default=False, null=False)
     responsavel = models.ForeignKey(
