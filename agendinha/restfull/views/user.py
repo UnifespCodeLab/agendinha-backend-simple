@@ -1,10 +1,8 @@
 from django.core.mail import EmailMultiAlternatives
-from google.oauth2 import id_token
 from ..models import Notificacao, Usuario, Role, Responsavel
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 from ..permissions import IsAdmin, IsAdminOrUser
 from .utils import generate_custom_jwt
-from google.auth.transport import requests as google_requests
 from rest_framework.pagination import PageNumberPagination
 from ..serializers.admin import (
     AdminUserRegisterSerializer, AdminUserListSerializer,
@@ -28,20 +26,21 @@ from django.template.loader import render_to_string
 from django.db import transaction, IntegrityError
 from rest_framework.parsers import MultiPartParser, FormParser
 from ..utils import is_number
+from .utils import (
+    verify_google_id_token,
+    GoogleAuthError,
+    GoogleUnavailableError,
+    exchange_google_code,
+    CALENDAR_SCOPE,
+    save_google_refresh_token
+)
 from django.db.models import Q
-import requests as http_requests
 import logging
 
 logger = logging.getLogger(__name__)
 
-GOOGLE_REDIRECT_URI = "postmessage"
-CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar.events"
- 
-class GoogleAuthError(Exception):
-    """Falha na autenticação com o Google (code inválido, token inválido, etc.)."""
- 
-class GoogleUnavailableError(Exception):
-    """Não foi possível falar com o Google (rede, timeout)."""
+GOOGLE_EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
+EVENT_FIELDS = ("summary", "location", "description", "start", "end", "colorId")
 
 # ============================================================================
 # VIEWS DE AUTENTICAÇÃO - USUÁRIOS
@@ -57,20 +56,7 @@ class GoogleUnavailableError(Exception):
         400: OpenApiTypes.OBJECT,
         500: OpenApiTypes.OBJECT,
     },
-    examples=[
-        OpenApiExample(
-            'Exemplo de registro',
-            value={
-                'nome': 'João Silva',
-                'email': 'joao@email.com',
-                'senha': 'senha123',
-                'nome_completo_responsavel': 'Maria Silva'
-            },
-            request_only=True,
-        ),
-    ]
 )
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def user_register(request):
@@ -164,54 +150,6 @@ def user_login(request):
     }
 
     return Response(response_data, status=status.HTTP_200_OK)
-
-def exchange_google_code(code: str) -> dict:
-    """
-    Troca o authorization code por tokens no endpoint do Google
-    e devolve o dict com id_token, access_token e scope.
-    O client_secret só existe aqui, no servidor.
-    """
-    try:
-        resp = http_requests.post(
-            settings.GOOGLE_TOKEN_URI,
-            data={
-                "code": code,
-                "client_id": settings.GOOGLE_CLIENT_ID,
-                "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                "redirect_uri": GOOGLE_REDIRECT_URI,
-                "grant_type": "authorization_code",
-            },
-            timeout=10,
-        )
-    except http_requests.RequestException as exc:
-        raise GoogleUnavailableError(str(exc)) from exc
- 
-    if resp.status_code != 200:
-        error = resp.json().get("error") if resp.content else "unknown"
-        logger.warning("Google rejeitou o code: %s", error)
-        raise GoogleAuthError("Código de autorização inválido ou expirado.")
- 
-    tokens = resp.json()
-    if not tokens.get("id_token"):
-        raise GoogleAuthError("Resposta do Google sem id_token.")
-    return tokens
- 
- 
-def verify_google_id_token(raw_id_token: str) -> dict:
-    """Valida assinatura, expiração e audiência (client_id) do id_token."""
-    try:
-        idinfo = id_token.verify_oauth2_token(
-            raw_id_token,
-            google_requests.Request(),
-            settings.GOOGLE_CLIENT_ID,
-        )
-    except ValueError as exc:
-        raise GoogleAuthError("Token do Google inválido.") from exc
- 
-    if not idinfo.get("email") or not idinfo.get("email_verified"):
-        raise GoogleAuthError("E-mail do Google não verificado.")
-    return idinfo
- 
  
 @extend_schema(
     tags=['Autenticação - Usuários'],
@@ -265,10 +203,10 @@ def user_login_google(request):
         try:
             user.save_image_from_url(picture)
         except Exception:
-            # Falha ao baixar a foto não deve impedir o login
             logger.warning("Não foi possível salvar a foto do usuário %s", user.pk)
  
     user.save()
+    save_google_refresh_token(user, google_tokens)
  
     token = generate_custom_jwt(user)
  
@@ -282,7 +220,6 @@ def user_login_google(request):
             "usuario": UserSerializer(user).data,
             "notificacoes": NotificationSerializer(notifications, many=True).data,
             "token": token,
-            "google_access_token": google_access_token,
         },
         status=status.HTTP_200_OK,
     )

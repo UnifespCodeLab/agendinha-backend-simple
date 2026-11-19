@@ -94,6 +94,10 @@ class UserSerializer(serializers.ModelSerializer):
     id_usuario = serializers.IntegerField(read_only=True)
     foto_perfil = CleanImageField(required=False, allow_null=True)
     responsavel = GuardianSerializer(read_only=True)
+    google_conectado = serializers.SerializerMethodField()
+
+    def get_google_conectado(self, obj) -> bool:
+        return bool(obj.google_refresh_token)
     
     class Meta:
         model = Usuario
@@ -106,5 +110,6 @@ class UserSerializer(serializers.ModelSerializer):
             'responsavel', 
             'foto_perfil', 
             'ativar_notificacoes_consultas',
+            'google_conectado',
         ]
         read_only_fields = ['id_usuario', 'cadastro_confirmado', 'role', 'responsavel']

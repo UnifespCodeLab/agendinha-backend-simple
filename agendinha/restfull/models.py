@@ -51,6 +51,7 @@ class Usuario(models.Model):
     )
     foto_perfil = models.ImageField(upload_to='images/', null=True, blank=True)
     modo_google = models.BooleanField(default=False, null=False)
+    google_refresh_token = models.TextField(null=True, blank=True)
     timeout_seconds = models.BigIntegerField(blank=True, default=10000)
     ativar_notificacoes_consultas = models.BooleanField(default=True, null=False)
     def make_token(self) -> str:
