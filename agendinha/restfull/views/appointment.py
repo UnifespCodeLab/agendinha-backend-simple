@@ -18,7 +18,8 @@ from .utils import (
     refresh_google_access_token,
     GoogleUnavailableError,
     GOOGLE_EVENTS_URL,
-    EVENT_FIELDS
+    EVENT_FIELDS,
+    format_date
 )
 
 logger = logging.getLogger(__name__)
@@ -153,7 +154,7 @@ def appointment_create(request):
             usuario=user,
             data=now(),
             titulo=data['titulo'],
-            descricao=f"{data.get('descricao', '')} {data_agendamento}",
+            descricao=f"Data e horário: {format_date(data_agendamento)}",
         )
         notification.save()
         
@@ -162,6 +163,7 @@ def appointment_create(request):
             status=status.HTTP_200_OK
         )
     except Exception as e:
+        print(e)
         return Response(
             {"message": "Erro ao inserir Agendamento.", "error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR

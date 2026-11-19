@@ -182,6 +182,9 @@ def verify_google_id_token(raw_id_token: str) -> dict:
         raise GoogleAuthError("E-mail do Google não verificado.")
     return idinfo
 
+def format_date(date):
+    return date.strftime("%d/%m/%Y %H:%M")
+
 @extend_schema(
     tags=['Health Check'],
     summary='Teste de conectividade',
