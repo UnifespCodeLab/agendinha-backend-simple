@@ -7,7 +7,7 @@ class GuardianSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Responsavel
-        fields = ['id_responsavel', 'nome']
+        fields = ['id_responsavel', 'nome', 'telefone', 'email']
         read_only_fields = ['id_responsavel']
 
 class GuardianRequestSerializer(serializers.Serializer):

@@ -19,6 +19,12 @@ class Responsavel(models.Model):
     id_responsavel = models.BigAutoField(primary_key=True)
     nome = models.CharField(max_length=255)
     telefone = models.CharField(max_length=20, unique=True, blank=True)
+    email = models.EmailField()
+
+    class Meta:
+        db_table = 'responsavel'
+        verbose_name = 'Responsável'
+        verbose_name_plural = 'Responsáveis'
 
 class Usuario(models.Model):
     """
@@ -26,8 +32,8 @@ class Usuario(models.Model):
     """
     id_usuario = models.BigAutoField(primary_key=True)
     nome = models.CharField(max_length=255, blank=True)
-    email = models.EmailField()
-    telefone = models.CharField(max_length=11, blank=True, unique=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    telefone = models.CharField(max_length=14, blank=True, unique=True, null=True)
     senha = models.CharField(max_length=255, blank=True)
     cadastro_confirmado = models.BooleanField(default=False, null=False)
     responsavel = models.ForeignKey(
@@ -45,6 +51,7 @@ class Usuario(models.Model):
     )
     foto_perfil = models.ImageField(upload_to='images/', null=True, blank=True)
     modo_google = models.BooleanField(default=False, null=False)
+    google_refresh_token = models.TextField(null=True, blank=True)
     timeout_seconds = models.BigIntegerField(blank=True, default=10000)
     ativar_notificacoes_consultas = models.BooleanField(default=True, null=False)
     def make_token(self) -> str:

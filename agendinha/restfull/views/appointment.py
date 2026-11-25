@@ -1,84 +1,98 @@
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
 from ..permissions import IsAdminOrUser
 from ..serializers.appointment import AppointmentRequestSerializer, AppointmentSerializer
 from ..models import Usuario, Agendamento, Notificacao
-from .utils import convert_to_iso
-from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
-from datetime import datetime, timedelta
+from datetime import datetime
 from django.utils.timezone import make_aware, now
-from google_auth_oauthlib.flow import InstalledAppFlow
 from django.db import transaction
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from drf_spectacular.types import OpenApiTypes
 from ..permissions import IsAdmin, IsAdminOrUser, IsUser
+import logging
+import requests
+from .utils import (
+    exchange_google_code, 
+    GoogleAuthError, 
+    refresh_google_access_token,
+    GoogleUnavailableError,
+    GOOGLE_EVENTS_URL,
+    EVENT_FIELDS,
+    format_date
+)
 
+logger = logging.getLogger(__name__)
+ 
+# ============================================================================
+# VIEWS DE AGENDAMENTOS
+# ============================================================================
+ 
 @extend_schema(
     tags=['Agendamentos'],
-    summary='Exportar tarefa para o Google Calendar',
-    description='Exporta tarefa para o Google Calendar de um usuário logado via OAuth2.',
-    responses={200: None},
+    summary='Exportar agendamento para o Google Agenda',
+    description='Cria o evento na agenda principal do usuário, usando o refresh token guardado',
+    request=None,
 )
 @api_view(['POST'])
 @permission_classes([IsAdminOrUser])
 def appointment_export_task_to_google_calendar(request):
-    appointment = request.data['appointment']
-
-    appointment_date = convert_to_iso(appointment['data'])
-    dt = datetime.fromisoformat(appointment_date)
-    new_dt = dt + timedelta(hours=1)
-    new_iso_time = new_dt.isoformat()
-
-    task = {
-        'summary': appointment['titulo'],
-        'location': appointment['local'],
-        'description': appointment['descricao'] + ', Médico responsável: ' + appointment['medico'],
-        'start': {
-            'dateTime': appointment_date,
-            'timeZone': 'America/Sao_Paulo',
-        },
-        'end': {
-            'dateTime': new_iso_time,
-            'timeZone': 'America/Sao_Paulo',
-        },
-        'colorId': 6,
-    }
-
-    new_tokens = {}
-
+    event = {k: v for k, v in request.data.items() if k in EVENT_FIELDS}
+    if not event.get("summary") or not event.get("start") or not event.get("end"):
+        return Response(
+            {"message": "Evento inválido: informe título, início e fim."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+ 
+    user = Usuario.objects.get(id_usuario=request.user.id_usuario) 
+    code = request.data.get("code")
+ 
     try:
-        tokens = request.data['tokens']
-        credentials = Credentials(
-            token=tokens['access_token'],
-            refresh_token=tokens['refresh_token'],
-            id_token=tokens['id_token'],
-            token_uri=settings.GOOGLE_TOKEN_URI,
-            client_id=settings.GOOGLE_CLIENT_ID,
-            client_secret=settings.GOOGLE_CLIENT_SECRET,
-            scopes=['https://www.googleapis.com/auth/calendar'],
-            default_scopes=[]
+        if code:
+            tokens = exchange_google_code(code)
+            access_token = tokens["access_token"]
+        else:
+            access_token = refresh_google_access_token(user)
+    except GoogleAuthError:
+        return Response(
+            {"message": "Autorização do Google expirada. Entre novamente com o Google."},
+            status=status.HTTP_401_UNAUTHORIZED,
         )
-        service = build('calendar', 'v3', credentials=credentials)
-        event = service.events().insert(calendarId='primary', body=task).execute()
-    except:
-        flow = InstalledAppFlow.from_client_secrets_file(
-            "credentials.json", ['https://www.googleapis.com/auth/calendar']
+    except GoogleUnavailableError:
+        logger.exception("Google indisponível ao renovar o token")
+        return Response(
+            {"message": "Não foi possível falar com o Google. Tente novamente."},
+            status=status.HTTP_502_BAD_GATEWAY,
         )
-        credentials = flow.run_local_server(port=8002)
-        event = service.events().insert(calendarId='primary', body=task).execute()
-        new_tokens = credentials.to_json()
-    
-    if event['status'] == 'confirmed':
-        return Response({"event_id": event["id"], "tokens": new_tokens}, status=status.HTTP_200_OK)
-    
-    return Response({"error": "Não foi possível criar um agendamento."}, status=status.HTTP_400_BAD_REQUEST)
-
-# ============================================================================
-# VIEWS DE AGENDAMENTOS
-# ============================================================================
+ 
+    try:
+        resp = requests.post(
+            GOOGLE_EVENTS_URL,
+            json=event,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        )
+    except requests.RequestException:
+        logger.exception("Falha ao chamar o Google Calendar")
+        return Response(
+            {"message": "Não foi possível falar com o Google Agenda."},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+ 
+    if resp.status_code in (200, 201):
+        return Response(status=status.HTTP_200_OK)
+ 
+    logger.error("Google Calendar respondeu %s: %s", resp.status_code, resp.text)
+    if resp.status_code in (401, 403):
+        # 403 costuma ser escopo de calendário não concedido
+        return Response(
+            {"message": "Sem permissão no Google Agenda. Entre novamente com o Google."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+    return Response(
+        {"message": "O Google Agenda recusou o evento."},
+        status=status.HTTP_502_BAD_GATEWAY,
+    )
 
 @extend_schema(
     tags=['Agendamentos'],
@@ -140,7 +154,7 @@ def appointment_create(request):
             usuario=user,
             data=now(),
             titulo=data['titulo'],
-            descricao=f"{data.get('descricao', '')} {data_agendamento}",
+            descricao=f"Data e horário: {format_date(data_agendamento)}",
         )
         notification.save()
         
@@ -149,6 +163,7 @@ def appointment_create(request):
             status=status.HTTP_200_OK
         )
     except Exception as e:
+        print(e)
         return Response(
             {"message": "Erro ao inserir Agendamento.", "error": str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
