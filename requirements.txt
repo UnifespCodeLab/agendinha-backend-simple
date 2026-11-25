@@ -35,3 +35,6 @@ google-auth==2.48.0
 google-api-python-client==2.191.0
 pywebpush==2.3.0
 google-auth-oauthlib==1.3.0
+
+# HTTP Server
+gunicorn==27.0.1

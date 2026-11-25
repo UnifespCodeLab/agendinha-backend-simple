@@ -3,7 +3,7 @@ URLs para API Unificada
 Compatível com estrutura dos microserviços Java
 """
 
-from django.urls import path, include
+from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 

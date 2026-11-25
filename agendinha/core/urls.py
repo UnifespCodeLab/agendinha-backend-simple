@@ -17,6 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, SpectacularRedocView
+from rest_framework.authentication import BasicAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -27,9 +29,24 @@ urlpatterns = [
     # DOCUMENTAÇÃO SWAGGER/OPENAPI
     # ========================================================================
     # Schema OpenAPI (JSON/YAML)
-    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path(
+        'api/schema/',
+        SpectacularAPIView.as_view(
+            authentication_classes=[BasicAuthentication],
+            permission_classes=[IsAuthenticated],
+        ),
+        name='schema',
+    ),
     # Swagger UI
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path(
+        'api/docs/',
+        SpectacularSwaggerView.as_view(
+            url_name='schema',
+            authentication_classes=[BasicAuthentication],
+            permission_classes=[IsAuthenticated],
+        ),
+        name='swagger-ui',
+    ),
     # ReDoc UI (alternativa)
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
