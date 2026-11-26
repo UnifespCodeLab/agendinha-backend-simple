@@ -220,8 +220,10 @@ CORS_ALLOWED_ORIGINS = os.getenv(
     'CORS_ALLOWED_ORIGINS', 
     'http://localhost:3000,http://localhost:8080'
 ).split(',')
-CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = DEBUG  # Apenas em desenvolvimento
+CORS_ALLOW_CREDENTIALS = not DEBUG
+CSRF_TRUSTED_ORIGINS = os.getenv('FRONTEND_URL', 'http://localhost:3000,http://localhost:8080').split(',')
+CORS_URLS_REGEX = r'^/agendinha/api/.*$'
 
 # Spectacular (Swagger/OpenAPI) Configuration
 SPECTACULAR_SETTINGS = {
@@ -250,6 +252,4 @@ SPECTACULAR_SETTINGS = {
 SECURITY_TOKEN = os.getenv('SECURITY_TOKEN', SECRET_KEY)
 SECURITY_EMISSOR = os.getenv('SECURITY_EMISSOR', 'agendinha-api-django')
 
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
